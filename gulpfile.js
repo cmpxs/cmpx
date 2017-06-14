@@ -68,7 +68,7 @@ gulp.task('build', function () {
     }).then(function (bundle) {
         bundle.write({
             format: "umd",
-            moduleName: "cmpx",
+            moduleName: "cmpxs.cmpx",
             dest: "./dist/bundles/cmpx.umd.js",
             sourceMap: true
         });
