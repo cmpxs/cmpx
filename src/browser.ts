@@ -51,7 +51,15 @@ let _htmlConfig = function () {
     HtmlDef.extendHtmlAttrDef({
         'name': DEFAULT_ATTR,
         'value': DEFAULT_ATTR_PROP,
-        'type': DEFAULT_ATTR_PROP
+        'type': DEFAULT_ATTR_PROP,
+        'model':{
+            setAttribute(element: HTMLElement, name: string, value: string, subName?: string) {
+                element['value'] = value;
+            },
+            getAttribute(element: HTMLElement, name: string, subName?: string) {
+                return element['value'];
+            }
+        }
     });
 
     //扩展事件处理, 如果不支持请在这里扩展

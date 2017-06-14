@@ -135,7 +135,6 @@ function _removeSpace(html: string): string {
 export interface IHtmlAttrDef {
   setAttribute: (element: HTMLElement, name: string, value: string, subName?: string) => void;
   getAttribute: (element: HTMLElement, name: string, subName?: string) => string;
-  writeable: boolean;
 }
 
 /**
@@ -153,8 +152,7 @@ export const DEFAULT_ATTR: IHtmlAttrDef = {
       return element[name][subName];
     else
       return element.getAttribute(name);
-  },
-  writeable: false
+  }
 };
 
 /**
@@ -172,8 +170,7 @@ export const DEFAULT_ATTR_PROP: IHtmlAttrDef = {
       return element[name][subName];
     else
       return element[name];
-  },
-  writeable: true
+  }
 };
 
 /**
