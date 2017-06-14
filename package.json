@@ -1,0 +1,32 @@
+{
+  "name": "cmpx",
+  "version": "0.9.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha -u tdd --timeout 999999 --colors ./node_modules/ts-node/register src/__test__/**/*.ts",
+    "start": "gulp",
+    "tscw": "tsc -w",
+    "tsc": "tsc -p .",
+    "build": "rimraf dist && npm run tsc && gulp build"
+  },
+  "author": "cmpx",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^3.5.2",
+    "@types/mocha": "^2.2.41",
+    "@types/node": "^7.0.29",
+    "browser-sync": "^2.18.12",
+    "chai": "^3.5.0",
+    "gulp": "^3.9.1",
+    "gulp-sourcemaps": "^2.6.0",
+    "gulp-typescript": "^3.1.7",
+    "mocha": "^3.4.2",
+    "rimraf": "^2.6.1",
+    "rollup": "^0.43.0",
+    "rollup-plugin-typescript2": "^0.4.3",
+    "ts-node": "^3.0.6",
+    "tslib": "^1.5.0",
+    "typescript": "^2.3.4"
+  }
+}

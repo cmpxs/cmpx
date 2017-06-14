@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "module": "es2015",
+        "target": "es3",
+        "moduleResolution":"node",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "allowJs": false,
+        "watch": false,
+        "listEmittedFiles": false,
+        "listFiles": false,
+        "alwaysStrict": true,
+        "experimentalDecorators": true,
+        "outDir": "./dist",
+        "baseUrl": ".",
+        //"locale": "zh-cn",
+        "rootDir": "."
+    },
+    //"compileOnSave": true,
+    "exclude": [
+        "node_modules", "dist", "test"
+    ]
+}

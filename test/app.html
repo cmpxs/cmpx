@@ -1,0 +1,45 @@
+<div class="app">tmplUrl
+<div><input $var="input1" type="text" value="{{#this.num}}" />{{this.num}}<input type="text" value={{this.numPrint
+       + '#4@#&'}} click="{{@console.log(input1.value)}}" />
+  divText ({{this.text}}){{: this.text}}
+  <span id="span1" style.color="{{'red'}}" click="{{@console.log(element.innerText);}}"> spanText {{:new Date().toString()}} | {{:new Date().getDay()}}  </Span>
+  <div>
+    <button click="{{@this.ok = !this.ok;this.$update()}}">ok</button>
+    <button click="{{@this.ok1 = !this.ok1;this.$update()}}">ok1</button>
+    <button click="{{@this.ok2 = !this.ok2;this.$update()}}">ok2</button>
+    {{if this.ok}}
+      ok1:true
+    {{else this.ok1}}
+      ok:false, ok1:true
+    {{else this.ok2}}
+      ok:false, ok1:false, ok2:true
+    {{else}}
+      ok:false, ok1:false, ok2:false
+    {{/if}}      
+  </div>
+  <div>
+    <button click="{{@this.click(1)}}">测试, 数量:{{this.numPrint}}</button>
+    <button click="{{@this.clickItem()}}">测试item.id</button>
+    <button click="{{@this.clickRender()}}" class="blue">测试render</button>
+    ({{this.aaaa}})
+  </div>
+  {{tmpl id="tmpl1" let="index=param.index"}}
+    <span>tmpl text</span> {{index}}
+    (<item param="asdfafd" $array="cpList" num="{{this.numPrint}}"></item>)
+  {{/tmpl}}{{for userItem in this.users}}
+    <div> {{:$index}}({{$odd}},{{userItem_odd}}) ({{userItem.id}}) for div text
+           inc:{{include tmpl="tmpl1" param="{index:$index}" }}
+           inc1:{{include render="this.testRender" }}
+    </div>
+  {{/for}}
+    <textarea class="red">
+    <span>aaa
+    </span>
+    </textarea>
+  <pre><span style.color="{{'red'}}">sd   fsfsf</span></pre>
+  <script type="text/html">alert('aaa');</script>
+  <select>{{for item in this.users}}
+  <option>{{item.id}}</option>
+  {{/for}}
+  </select>
+</div>

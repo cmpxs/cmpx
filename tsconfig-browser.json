@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+        //"declaration": true,
+        "module": "amd",
+        "target": "es3",
+        "moduleResolution":"node",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "allowJs": false,
+        "watch": false,
+        "listEmittedFiles": true,
+        "listFiles": false,
+        "alwaysStrict": true,
+        "experimentalDecorators": true,
+        //"outDir": "./dist",
+        "outFile": "./index.js"//,
+        //"baseUrl": "./src",
+        //"locale": "zh-cn",
+        //"rootDir": "./src"
+    }//,
+    // "files": [
+    //     "src/cmpxLib.ts",
+    //     "src/htmlTagDef.ts",
+    //     "src/componet.ts",
+    //     "src/compile.ts",
+    //     "src/platform.ts",
+    //     "src/brower.ts",
+    //     "src/index.ts",
+    //     "src/testing/test.ts"
+    // ],
+    // //"compileOnSave": true,
+    // "exclude": [
+    //     "node_modules", "dist", "./*.*", "test", "src/__test__/**", "src/output/**"
+    // ]
+}
