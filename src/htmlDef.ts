@@ -134,7 +134,8 @@ function _removeSpace(html: string): string {
  */
 export interface IHtmlAttrDef {
   setAttribute: (element: HTMLElement, name: string, value: string, subName?: string) => void;
-  getAttribute: (element: HTMLElement, name: string, subName?: string) => string;
+  getAttribute: (element: HTMLElement, name: string, subName?: string) => any;
+  writeEvent?:string[];
 }
 
 /**
@@ -145,9 +146,9 @@ export const DEFAULT_ATTR: IHtmlAttrDef = {
     if (subName)
       element[name][subName] = value;
     else
-      element.setAttribute(name, value);
+      element.setAttribute(name, CmpxLib.toStr(value));
   },
-  getAttribute(element: HTMLElement, name: string, subName?: string) {
+  getAttribute(element: HTMLElement, name: string, subName?: string):any {
     if (subName)
       return element[name][subName];
     else
@@ -161,11 +162,11 @@ export const DEFAULT_ATTR: IHtmlAttrDef = {
 export const DEFAULT_ATTR_PROP: IHtmlAttrDef = {
   setAttribute(element: HTMLElement, name: string, value: string, subName?: string) {
     if (subName)
-      element[name][subName] = value;
+      element[name][subName] = name == 'value' ? CmpxLib.toStr(value) : value;
     else
-      element[name] = value;
+      element[name] = name == 'value' ? CmpxLib.toStr(value) : value;
   },
-  getAttribute(element: HTMLElement, name: string, subName?: string) {
+  getAttribute(element: HTMLElement, name: string, subName?: string):any {
     if (subName)
       return element[name][subName];
     else

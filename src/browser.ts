@@ -47,6 +47,7 @@ let _htmlConfig = function () {
         'textarea': _rawTag
     });
 
+    let modelChecked = /radio|checkbox/i;
     //扩展attr, 如果不支持请在这里扩展
     HtmlDef.extendHtmlAttrDef({
         'name': DEFAULT_ATTR,
@@ -54,11 +55,15 @@ let _htmlConfig = function () {
         'type': DEFAULT_ATTR_PROP,
         'model':{
             setAttribute(element: HTMLElement, name: string, value: string, subName?: string) {
-                element['value'] = value;
+                if (modelChecked.test(element['type']))
+                    element['checked'] = element['value'] == value;
+                else
+                    element['value'] = CmpxLib.toStr(value);
             },
-            getAttribute(element: HTMLElement, name: string, subName?: string) {
-                return element['value'];
-            }
+            getAttribute(element: HTMLElement, name: string, subName?: string) :any {
+                return !modelChecked.test(element['type']) || element['checked'] ? element['value'] : '';
+            },
+            writeEvent:['change', 'click']
         }
     });
 
