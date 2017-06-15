@@ -237,14 +237,14 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         if (onlyBing){
             readContent = isOnce ? 'once0' : readTxt;
         }
-        readContent = readContent.replace(_removeEmptySplitRegex, '');
+        //readContent = readContent.replace(_removeEmptySplitRegex, '');
 
         var once: string;
         if (write || read || isOnce || onceList.length > 0) {
             if (isOnce) {
                 let oList = [];
                 CmpxLib.each(onceList, function (item: string, index: number) {
-                    oList.push(['once', index, ' = ', onlyBing ? item : 'CmpxLib.toStr(', item, ')'].join(''));
+                    oList.push(['once', index, ' = ', onlyBing ? item : ('CmpxLib.toStr('+ item+ ')')].join(''));
                 });
                 once = 'var ' + oList.join(',') + ';';
             }
