@@ -73,11 +73,11 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         return encodeURIComponent(s).replace(/'/g, '%27');
     },
     //将{{this.name}}绑定标签转成$($this.name$)$
-    _cmdEncodeAttrRegex = /\{\{((?!\/|\s*(?:if|else|for|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
+    _cmdEncodeAttrRegex = /\{\{\{((?:.|\r|\n)*?)\}\}\}|\{\{((?!\/|\s*(?:if|else|for|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
     _makeTextTag = function (tmpl: string): string {
         //
-        return tmpl.replace(_cmdEncodeAttrRegex, function (find, content) {
-            return ['$($', _encodeURIComponentEx(content), '$)$'].join('');
+        return tmpl.replace(_cmdEncodeAttrRegex, function (find, content, content1) {
+            return ['$($', _encodeURIComponentEx(content||content1), '$)$'].join('');
         });
     },
     //把$($this.name$)$还原
@@ -735,7 +735,7 @@ export class CompileRender {
         },
             readyFn = function () {
                 childNodes = CmpxLib.toArray(fragment.childNodes);
-                _insertAfter(fragment, refNode, parentElement);
+                _insertAfter(fragment, refNode, _getParentElement(refNode));
                 newSubject.insertDoc({
                     componet: componet
                 });
@@ -986,7 +986,7 @@ export class Compile {
                         componet: componet
                     });
                     childNodes = CmpxLib.toArray(fragment.childNodes);
-                    _insertAfter(fragment, refNode, parentElement);
+                    _insertAfter(fragment, refNode, _getParentElement(refNode));
                     newSubject.insertDoc({
                         componet: componet
                     });
