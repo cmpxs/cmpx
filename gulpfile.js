@@ -79,3 +79,8 @@ gulp.task('todemo', function () {
     return gulp.src(['dist/**'])
         .pipe(gulp.dest('../cmpx-demo/node_modules/cmpx'));
 });
+
+gulp.task('tonpm', function () {
+    return gulp.src(['dist/**'])
+        .pipe(gulp.dest('../cmpx-npm'));
+});
