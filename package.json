@@ -8,7 +8,8 @@
     "start": "gulp",
     "tscw": "tsc -w",
     "tsc": "tsc -p .",
-    "build": "rimraf dist && npm run tsc && gulp build"
+    "build": "rimraf dist && npm run tsc && gulp build",
+    "todemo": "npm run build && rimraf ../cmpx-demo/node_modules/cmpx/** && gulp todemo"
   },
   "author": "cmpx",
   "license": "MIT",

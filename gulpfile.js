@@ -74,3 +74,8 @@ gulp.task('build', function () {
         });
     })
 });
+
+gulp.task('todemo', function () {
+    return gulp.src(['dist/**'])
+        .pipe(gulp.dest('../cmpx-demo/node_modules/cmpx'));
+});

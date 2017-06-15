@@ -290,6 +290,8 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
 export interface IVMConfig {
     //标签名称
     name: string;
+    //模板要引用的类库，如组件
+    include?:any[];
     //模板，可以编译后的function, 如果有配置tmplUrl, 优先使用tmplUrl
     tmpl?: string | Function;
     //模板url，可以编译后的function，如果加载失败使用tmpl内容
@@ -302,7 +304,8 @@ export interface IVMConfig {
 
 interface IVM {
     render: CompileRender;
-    componetDef: Function
+    componetDef: Function;
+    vm?:IVMConfig;
 }
 
 var _registerVM: { [selector: string]: IVM } = {},
@@ -325,6 +328,7 @@ export function VM(vm: IVMConfig) {
     return function (constructor: Function) {
         _registerVM[vm.name] = {
             render: null,
+            vm:vm,
             componetDef: constructor
         };
         var rdF = function () {
