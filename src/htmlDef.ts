@@ -222,6 +222,12 @@ var _htmlEventDefConfig: IHtmlEventDefConfig = {};
 
 export class HtmlDef {
 
+    //获取父元素
+    static getParentElement(node: Node): HTMLElement {
+        return node.parentElement || (node.parentNode as HTMLElement);
+    }
+
+
   /**
    * 获取标签定义
    * @param tagName 标签名称

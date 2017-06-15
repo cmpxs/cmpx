@@ -4,9 +4,7 @@ import { Compile, CompileSubject } from './compile';
 import { HtmlDef, HtmlTagDef, ICreateElementAttr, DEFULE_TAG, DEFAULT_ATTR, DEFAULT_ATTR_PROP, DEFAULT_EVENT_DEF, SINGLE_TAG } from './htmlDef';
 import CmpxLib from './cmpxLib';
 
-let _getParentElement = function (element: Node): Node {
-    return element.parentElement || element.parentNode;
-},
+let _getParentElement = HtmlDef.getParentElement,
     _setAttribute = function (element: HTMLElement, attrs: ICreateElementAttr[]) {
         CmpxLib.each(attrs, function (item: ICreateElementAttr) {
             HtmlDef.getHtmlAttrDef(item.name).setAttribute(element, item.name, item.value, item.subName);

@@ -587,9 +587,7 @@ let _tmplName = '__tmpl__',
 
         return array1.length == array2.length && _equalArrayIn(array1, array2);
     },
-    _getParentElement = function (node: Node): HTMLElement {
-        return node.parentElement || (node.parentNode as HTMLElement);
-    },
+    _getParentElement = HtmlDef.getParentElement,
     _removeChildNodes = function (childNodes: Node[]) {
         if (childNodes && childNodes.length > 0) {
             let pNode: Node;
