@@ -62,7 +62,7 @@ gulp.task('build', function () {
         entry: "./index.ts",
         plugins: [
             rollupTypescript({
-                tsconfig: './tsconfig.json'
+                tsconfig: './tsconfig-build.json'
             })
         ]
     }).then(function (bundle) {

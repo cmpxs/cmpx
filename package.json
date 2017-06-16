@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha -u tdd --timeout 999999 --colors ./node_modules/ts-node/register src/__test__/**/*.ts",
+    "test": "./node_modules/.bin/mocha -u tdd --timeout 999999 --colors ./node_modules/ts-node/register test/**/*.ts",
     "start": "gulp",
     "tscw": "tsc -w",
     "tsc": "tsc -p .",
@@ -29,6 +29,7 @@
     "rollup-plugin-typescript2": "^0.4.3",
     "ts-node": "^3.0.6",
     "tslib": "^1.5.0",
-    "typescript": "^2.3.4"
+    "typescript": "^2.3.4",
+    "typings": "^2.1.1"
   }
 }
