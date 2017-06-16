@@ -381,11 +381,10 @@ let _tmplCount = 0, _tmplFnList = [], _tmplLoaded = function (callback) {
 };
 
 interface IViewvarDef {
-    name: string;
-    propKey: string;
+    [name: string]:string;
 }
 var _viewvarName = '__viewvar__',
-    _getViewvarDef = function (componet: Componet): IViewvarDef[] {
+    _getViewvarDef = function (componet: Componet): IViewvarDef {
         return componet[_viewvarName];
     };
 /**
@@ -395,11 +394,8 @@ var _viewvarName = '__viewvar__',
 export function viewvar(name?: string) {
     return function (componet: Componet, propKey: string) {
         name || (name = propKey);
-        var vv: IViewvarDef[] = (componet[_viewvarName] || (componet[_viewvarName] = []));
-        vv.push({
-            name: name || propKey,
-            propKey: propKey
-        });
+        var vv: IViewvarDef = (componet[_viewvarName] || (componet[_viewvarName] = {}));
+        vv[name || propKey] = propKey;
     }
 }
 
@@ -670,10 +666,18 @@ export class CompileRender {
 
         newSubject.subscribe({
             remove: function (p: ISubscribeEvent) {
-                try {
+                let rmFn = function(){
+                    let vv:IViewvarDef = _getViewvarDef(componet);
+                    CmpxLib.eachProp(vv, function(item){
+                        this[item] = null;
+                    }, componet);
                     isNewComponet && (componet.$isDisposed = true, componet.onDispose());
                     if (p.componet == componet)
                         childNodes = _removeChildNodes(childNodes);
+
+                };//end rmFn
+                try {
+                    rmFn();
                 } catch (e) {
                     CmpxLib.trace(e);
                 } finally {
@@ -689,13 +693,9 @@ export class CompileRender {
                             componet.$parent = componet.$parentElement = null;
                     }
                 }
-            },
-            updateAfter: function (p: ISubscribeEvent) {
-                isNewComponet && retFn && retFn.call(componet);
-
             }
         });
-        let childNodes: Node[], retFn;
+        let childNodes: Node[];
         let fragment: DocumentFragment, initFn = () => {
             newSubject.init({
                 componet: componet
@@ -706,24 +706,7 @@ export class CompileRender {
                     fragment = refNode = componet = parentElement = parentComponet = null;
                 }
             });
-            retFn = this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, this.param, function (vvList: any[]) {
-                if (!vvList || vvList.length == 0) return;
-                let vvDef: IViewvarDef[] = _getViewvarDef(this);
-                if (!vvDef) return;
-                CmpxLib.each(vvDef, function (def: IViewvarDef) {
-                    let propKey = def.propKey, name = def.name;
-                    CmpxLib.each(vvList, function (item: { name: string, p: any, isL: boolean }) {
-                        if (item.name == name) {
-                            if (item.isL) {
-                                if (!this[propKey] || item.p.length > 0)
-                                    this[propKey] = item.p.splice(0);
-                            } else
-                                this[propKey] = item.p;
-                            return false;
-                        }
-                    }, this);
-                }, this);
-            });
+            this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, this.param);
             newSubject.update({
                 componet: componet
             });
@@ -733,21 +716,21 @@ export class CompileRender {
             else
                 readyFn();
         },
-            readyFn = function () {
-                childNodes = CmpxLib.toArray(fragment.childNodes);
-                _insertAfter(fragment, refNode, _getParentElement(refNode));
-                newSubject.insertDoc({
-                    componet: componet
-                });
-                isNewComponet && componet.onReady(function () { }, null);
-                newSubject.ready({
-                    componet: componet
-                });
-                //reay后再次补发update
-                newSubject.update({
-                    componet: componet
-                });
-            };
+        readyFn = function () {
+            childNodes = CmpxLib.toArray(fragment.childNodes);
+            _insertAfter(fragment, refNode, _getParentElement(refNode));
+            newSubject.insertDoc({
+                componet: componet
+            });
+            isNewComponet && componet.onReady(function () { }, null);
+            newSubject.ready({
+                componet: componet
+            });
+            //reay后再次补发update
+            newSubject.update({
+                componet: componet
+            });
+        };
         if (isNewComponet) {
             componet.onInit(function (err) {
                 initFn();
@@ -795,7 +778,12 @@ export class Compile {
     }
 
     public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject){
-        var vInfo = addFn && addFn.call(componet, componet, element);
+        let vInfo = addFn && addFn.call(componet, componet, element),
+            vv:IViewvarDef = _getViewvarDef(componet),
+            propKey = vv[vInfo.name];
+
+        (vv && propKey) && (componet[propKey] = vInfo.value);
+
         subject.subscribe({
             remove:function(){
                 removeFn && removeFn.call(componet, componet, element);
@@ -1138,9 +1126,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
     __forRender = Compile.forRender, __ifRender = Compile.ifRender,
     __includeRender = Compile.includeRender;`);
 
-    outList.push(_buildCompileFnReturn(varNameList));
-
-    return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', '__p__', 'initViewvar', outList.join('\n'));
+    return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', '__p__', outList.join('\n'));
 },
     _getCompileFnParam = function (param: Object): string {
         var pList = [];
@@ -1150,20 +1136,6 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
         return 'var ' + pList.join(', ') + ';';
     },
     _buildCpFnRetRmRegex = /\s*\=\s*\[\s*\]\s*$/,
-    _buildCompileFnReturn = function (varNameList: string[]): string {
-
-        if (varNameList.length > 0) {
-            let vvList = [], isL: boolean;
-            CmpxLib.each(varNameList, function (item) {
-                isL = _buildCpFnRetRmRegex.test(item);
-                isL && (item = item.replace(_buildCpFnRetRmRegex, ''));
-                vvList.push(['{name:"', item, '", p:', item, ', isL:', (isL ? 'true' : 'false'), '}'].join(''));
-            });
-            return 'return function(){initViewvar.call(this, [' + vvList.join(',') + ']);};';
-        } else {
-            return 'return function(){initViewvar.call(this);};'
-        }
-    },
     _escapeStringRegex = /([\"\\])/gm,
     _escapeBuildString = function (s: string): string {
         return s ? s.replace(/([\"\\])/gm, '\\$1').replace(/\n/gm, '\\n').replace(/\r/gm, '\\r') : '';
@@ -1259,13 +1231,13 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                             outList.push('__createComponet("' + tagName + '", componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
                                 outList.push('__setViewvar(function(componet, element){');
-                                varName.item && outList.push(varName.item + ' = componet;');
-                                varName.list && outList.push(varName.list + '.push(componet);');
-                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+', isL:false}');
-                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+', isL:true}');
+                                varName.item && outList.push(varName.item + ' = this;');
+                                varName.list && outList.push(varName.list + '.push(this);');
+                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
+                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
-                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(componet); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
                                 outList.push('}, componet, element, subject)');
                             }
                             _buildAttrContentCP(tag.attrs, outList);
@@ -1290,8 +1262,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                                 outList.push('__setViewvar(function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = element;');
                                 varName.list && outList.push(varName.list + '.push(element);');
-                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+', isL:false}');
-                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+', isL:true}');
+                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
+                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(element); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
