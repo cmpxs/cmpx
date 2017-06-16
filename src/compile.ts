@@ -965,7 +965,7 @@ export class Compile {
             update: function (p: ISubscribeEvent) {
                 let datas = dataFn.call(componet, componet, parentElement, subject);
                 if (!_equalArray(datas, value)) {
-                    value = datas;
+                    value = datas && datas.slice();
 
                     removeFn();
                     newSubject && newSubject.remove({
