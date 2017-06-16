@@ -710,11 +710,7 @@ export class CompileRender {
             newSubject.update({
                 componet: componet
             });
-            if (isNewComponet) {
-                componet.onInitViewvar(readyFn, null);
-            }
-            else
-                readyFn();
+            readyFn();
         },
         readyFn = function () {
             childNodes = CmpxLib.toArray(fragment.childNodes);
@@ -965,28 +961,39 @@ export class Compile {
             update: function (p: ISubscribeEvent) {
                 let datas = dataFn.call(componet, componet, parentElement, subject);
                 if (!_equalArray(datas, value)) {
-                    value = datas && datas.slice();
+
+                    let isArray = CmpxLib.isArray(datas);
+                    //如果是数组，复制一份，如果不是直接备份，有用比较
+                    value = isArray ? datas.slice() : datas;
 
                     removeFn();
                     newSubject && newSubject.remove({
                         componet: componet
                     });
 
-                    newSubject = new CompileSubject(subject, { insertDoc: true });
+                    //如果有数据
+                    if (datas){
+                        //如果不是数组，转为一个数组
+                        isArray || (datas = [datas]);
 
-                    fragment = document.createDocumentFragment();
-                    let count = datas ? datas.length : 0;
-                    CmpxLib.each(datas, function (item, index) {
-                        eachFn.call(componet, item, count, index, componet, fragment, newSubject);
-                    });
-                    newSubject.update({
-                        componet: componet
-                    });
-                    childNodes = CmpxLib.toArray(fragment.childNodes);
-                    _insertAfter(fragment, refNode, _getParentElement(refNode));
-                    newSubject.insertDoc({
-                        componet: componet
-                    });
+                        newSubject = new CompileSubject(subject, { insertDoc: true });
+
+                        fragment = document.createDocumentFragment();
+                        let count = datas.length;
+                        CmpxLib.each(datas, function (item, index) {
+                            eachFn.call(componet, item, count, index, componet, fragment, newSubject);
+                        });
+                        newSubject.update({
+                            componet: componet
+                        });
+                        childNodes = CmpxLib.toArray(fragment.childNodes);
+                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        newSubject.insertDoc({
+                            componet: componet
+                        });
+
+                    } else
+                        newSubject = null;
                 }
             },
             remove: function (p: ISubscribeEvent) {

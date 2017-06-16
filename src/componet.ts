@@ -59,15 +59,6 @@ export class Componet {
     }
 
     /**
-     * 准备好Viewvar后, 在onInit之后、onReady之前触发
-     * @param cb 处理完成后，通知继续处理
-     * @param p 传入的参数
-     */
-    onInitViewvar(cb: (err?: any) => void, p?: any): void {
-        cb && cb();
-    }
-
-    /**
      * View所有东西已经处理完成时触发
      * @param cb 处理完成后，通知继续处理
      * @param p 传入参数
