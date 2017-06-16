@@ -6,4 +6,4 @@ npm install
 
 npm satrt
 
-//todo: 
+//todo: $render参数问题

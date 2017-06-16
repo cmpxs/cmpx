@@ -7,24 +7,10 @@ import 'mocha';
 import fs = require('fs');
 
 var tmpl = `
-<div>
+<div $array="divList">
   divText
-  <span $var="span1" id="span1" text="{{'asdfafd'}}" style="{{'color:red'}}" > spanText{{>this.user}}{{!"this"}} </span>
-  {{tmpl id="tmpl1" let="item = param.item, index = param.index"}}
-    tmpl text
-  {{/tmpl}}
-  {{for userItem in this.users}}
-    <div> for div text </div>
-    {{include tmpl="tmpl1" param="{item: userItem, $index:$index}" }}
-  {{/for}}
-  {{tmpl id="tmpl2"}}
-    {{item.name}}
-  {{/tmpl}}
-</div>
-<textarea><span>aaa</span></textarea>
-<script type="text/html">
-sdf<br />
-</script>
+  <span $var="span1" $array="spanList" id="span1" text="{{'asdfafd'}}" style="{{'color:red'}}" > spanText{{>this.user}}{{!"this"}} </span>
+</div>  
 `;
 
 describe('Compile', () => {

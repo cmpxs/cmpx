@@ -794,6 +794,15 @@ export class Compile {
 
     }
 
+    public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject){
+        var vInfo = addFn && addFn.call(componet, componet, element);
+        subject.subscribe({
+            remove:function(){
+                removeFn && removeFn.call(componet, componet, element);
+            }
+        });
+    }
+
     public static setAttributeCP(element: HTMLElement, name: string, content: any, componet: Componet, subject: CompileSubject): void {
         let isObj = !CmpxLib.isString(content),
             parent = componet.$parent;
@@ -1123,13 +1132,10 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
     varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
     param && outList.unshift(_getCompileFnParam(param));
     outList.unshift(`var __tmplRender = Compile.tmplRender,
-    __createComponet = Compile.createComponet,
-    __setAttributeCP = Compile.setAttributeCP,
-    __createElement = Compile.createElement,
-    __setAttribute = Compile.setAttribute,
-    __createTextNode = Compile.createTextNode,
-    __forRender = Compile.forRender,
-    __ifRender = Compile.ifRender,
+    __createComponet = Compile.createComponet, __setViewvar = Compile.setViewvar,
+    __setAttributeCP = Compile.setAttributeCP, __createElement = Compile.createElement,
+    __setAttribute = Compile.setAttribute,__createTextNode = Compile.createTextNode,
+    __forRender = Compile.forRender, __ifRender = Compile.ifRender,
     __includeRender = Compile.includeRender;`);
 
     outList.push(_buildCompileFnReturn(varNameList));
@@ -1252,8 +1258,15 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                         if (hasChild || hasAttr || varName) {
                             outList.push('__createComponet("' + tagName + '", componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
+                                outList.push('__setViewvar(function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = componet;');
                                 varName.list && outList.push(varName.list + '.push(componet);');
+                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+', isL:false}');
+                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+', isL:true}');
+                                outList.push('}, function(componet, element){');
+                                varName.item && outList.push(varName.item + ' = null;');
+                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(componet); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                                outList.push('}, componet, element, subject)');
                             }
                             _buildAttrContentCP(tag.attrs, outList);
                             //createComponet下只能放tmpl
@@ -1274,8 +1287,15 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                             let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
                             outList.push('__createElement("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
+                                outList.push('__setViewvar(function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = element;');
                                 varName.list && outList.push(varName.list + '.push(element);');
+                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+', isL:false}');
+                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+', isL:true}');
+                                outList.push('}, function(componet, element){');
+                                varName.item && outList.push(varName.item + ' = null;');
+                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(element); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                                outList.push('}, componet, element, subject)');
                             }
                             _buildAttrContent(bindAttrs, outList);
                             hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
