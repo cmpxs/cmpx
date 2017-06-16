@@ -411,8 +411,6 @@ export interface ISubscribeParam {
     update?: (p: ISubscribeEvent) => void;
     //更新视图之后
     updateAfter?: (p: ISubscribeEvent) => void;
-    //节点插入dom之后
-    insertDoc?: (p: ISubscribeEvent) => void;
     //视图准备好
     ready?: (p: ISubscribeEvent) => void;
     //节点或视图删除
@@ -429,7 +427,6 @@ export class CompileSubject {
                 this.linkParam = subject.subscribe({
                     init: (p: ISubscribeEvent) => (!exclude || !exclude.init) && this.init(p),
                     update: (p: ISubscribeEvent) => (!exclude || !exclude.update) && this.update(p),
-                    insertDoc: (p: ISubscribeEvent) => (!exclude || !exclude.insertDoc) && this.insertDoc(p),
                     ready: (p: ISubscribeEvent) => (!exclude || !exclude.ready) && this.ready(p),
                     remove: (p: ISubscribeEvent) => (!exclude || !exclude.remove) && this.remove(p)
                 });
@@ -491,16 +488,6 @@ export class CompileSubject {
         CmpxLib.each(this.datas, function (item: ISubscribeParam) {
             if (item.updateAfter) {
                 item.updateAfter && item.updateAfter(p);
-            }
-        });
-    }
-
-    insertDoc(p: ISubscribeEvent) {
-        if (this.isRemove) return;
-        CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item.insertDoc) {
-                item.insertDoc(p);
-                item.insertDoc = null;
             }
         });
     }
@@ -635,7 +622,6 @@ export class CompileRender {
         subject || (subject = (parentComponet ? parentComponet.$subObject : null));
         subjectExclude || (subjectExclude = {});
         //subjectExclude.remove = true;
-        subjectExclude.insertDoc = true;
 
         let componet: any,
             isNewComponet: boolean = false,
@@ -715,9 +701,6 @@ export class CompileRender {
         readyFn = function () {
             childNodes = CmpxLib.toArray(fragment.childNodes);
             _insertAfter(fragment, refNode, _getParentElement(refNode));
-            newSubject.insertDoc({
-                componet: componet
-            });
             isNewComponet && componet.onReady(function () { }, null);
             newSubject.ready({
                 componet: componet
@@ -954,7 +937,7 @@ export class Compile {
         let { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
 
         let value: any, newSubject: CompileSubject;
-        let fragment: DocumentFragment, childNodes: Node[], removeFn = function () {
+        let childNodes: Node[], removeFn = function () {
             childNodes = _removeChildNodes(childNodes);
         };
         subject.subscribe({
@@ -976,9 +959,9 @@ export class Compile {
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
 
-                        newSubject = new CompileSubject(subject, { insertDoc: true });
+                        newSubject = new CompileSubject(subject);
 
-                        fragment = document.createDocumentFragment();
+                        let fragment = document.createDocumentFragment();
                         let count = datas.length;
                         CmpxLib.each(datas, function (item, index) {
                             eachFn.call(componet, item, count, index, componet, fragment, newSubject);
@@ -988,9 +971,7 @@ export class Compile {
                         });
                         childNodes = CmpxLib.toArray(fragment.childNodes);
                         _insertAfter(fragment, refNode, _getParentElement(refNode));
-                        newSubject.insertDoc({
-                            componet: componet
-                        });
+                        fragment = null;
 
                     } else
                         newSubject = null;
@@ -998,7 +979,7 @@ export class Compile {
             },
             remove: function (p: ISubscribeEvent) {
                 removeFn();
-                newSubject = fragment = childNodes = refNode = null;
+                newSubject = childNodes = refNode = null;
             }
         });
     }
@@ -1030,7 +1011,7 @@ export class Compile {
                         componet: componet
                     });
 
-                    newSubject = new CompileSubject(subject, { insertDoc: true });
+                    newSubject = new CompileSubject(subject);
 
                     fragment = document.createDocumentFragment();
                     if (newValue)
@@ -1042,9 +1023,6 @@ export class Compile {
                     });
                     childNodes = CmpxLib.toArray(fragment.childNodes);
                     _insertAfter(fragment, refNode, _getParentElement(refNode));
-                    newSubject.insertDoc({
-                        componet: componet
-                    });
                 }
             },
             remove: function (p: ISubscribeEvent) {

@@ -6,4 +6,4 @@ npm install
 
 npm satrt
 
-//todo: $render参数问题
+//todo: $render参数问题, {{for}}差异更新？

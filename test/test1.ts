@@ -9,7 +9,9 @@ import fs = require('fs');
 var tmpl = `
 <div $array="divList">
   divText
+  {{for item in [1]}}
   <span $var="span1" $array="spanList" id="span1" text="{{'asdfafd'}}" style="{{'color:red'}}" > spanText{{>this.user}}{{!"this"}} </span>
+  {{/for}}
 </div>  
 `;
 
