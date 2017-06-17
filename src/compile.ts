@@ -938,9 +938,9 @@ export class Compile {
 
         let { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
 
-        let value: any, newSubject: CompileSubject;
+        let value: any, newSubject: CompileSubject, code = 0;
         let childNodes: Node[],
-            syncDatas:{index:number,nodes?:Node[], fn:()=>void}[],
+            syncDatas:{index:number,nodes?:Node[], subject:CompileSubject, code:number, fn:()=>void}[],
             removeFn = function () {
                 if (!syncFn)
                     childNodes = _removeChildNodes(childNodes);
@@ -954,50 +954,57 @@ export class Compile {
                     //如果是数组，复制一份，如果不是直接备份，有用比较
                     value = isArray ? datas.slice() : datas;
 
-                    removeFn();
-                    newSubject && newSubject.remove({
-                        componet: componet
-                    });
-
                     //如果有数据
                     if (datas){
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
+                        code++;//代表批次，不同的批次删除
 
                         let fragment = document.createDocumentFragment(),
                             count = datas.length;
-                        newSubject = new CompileSubject(subject);
 
                         if (syncFn){
                             //同步模式，同步性生成view
                             let oldDatas = CmpxLib.isArray(value) ? value : [value],
-                                newSyncDatas = [], frNodePos = 0, lastNode:Node;
+                                newSyncDatas = [], frNodePos = 0, lastNode:Node = refNode;
 
                             CmpxLib.each(datas, function (item, index) {
                                 let oldItem = oldDatas[index],
                                     syncItem = syncDatas[index],
                                     idx = syncItem ? syncFn(oldItem, count, index, datas) : -1;
-                                if (idx >= 0){
-                                   if (syncItem.index != idx){
-                                       syncItem.index = idx;
-                                       CmpxLib.each(syncItem.nodes, function(node){
-                                           fragment.appendChild(node);
-                                       });
-                                       frNodePos += syncItem.nodes.length;
-                                   } else{
-                                        if (frNodePos > 0){
-                                            _insertAfter(fragment, refNode, _getParentElement(refNode));
+                                if (idx >= 0) {
+                                    //如果存在
+                                    if (syncItem.index != idx) {
+                                        //如果位置不一样，处理位置
+                                        syncItem.index = idx;
+                                        CmpxLib.each(syncItem.nodes, function (node) {
+                                            fragment.appendChild(node);
+                                        });
+                                        frNodePos += syncItem.nodes.length;
+                                        //重新处理for 变量
+                                        syncItem.fn.call(componet, item, count, index);
+                                    } else {
+                                        //如果位置一样，这节点不变
+                                        let tln = fragment.lastChild;
+                                        if (frNodePos > 0) {
+                                            //如果有未插入节点，插入到view
+                                            _insertAfter(fragment, lastNode, _getParentElement(lastNode));
                                             frNodePos = 0;
                                         }
-                                       syncItem.fn.call(componet, item, count, index);
-                                   }
+                                        //保存最后节点
+                                        lastNode = syncItem.nodes[syncItem.nodes.length-1] || tln || lastNode;
+                                    }
+                                    syncItem.code = code;
                                 } else {
+                                //如果不存在，新建
+                                    let st = new CompileSubject(subject);
                                     syncItem = {
+                                        code:code,
                                         index: index,
-                                        fn:eachFn.call(componet, item, count, index, componet, fragment, newSubject)
+                                        subject:st,
+                                        fn:eachFn.call(componet, item, count, index, componet, fragment, st)
                                     };
                                     syncItem.nodes = CmpxLib.toArray(fragment.childNodes, frNodePos);
-                                    lastNode = fragment.lastChild;
                                     frNodePos += syncItem.nodes.length;
                                 }
                                 newSyncDatas.push(syncItem);
@@ -1006,8 +1013,26 @@ export class Compile {
                                 _insertAfter(fragment, refNode, _getParentElement(refNode));
                             }
                             lastNode = null;
+                            //删除多余节点
+                            CmpxLib.each(syncDatas, function(item){
+                                if (item.code != code){
+                                    item.nodes = _removeChildNodes(item.nodes);
+                                    item.subject.remove({
+                                        componet: componet
+                                    });
+                                    item.subject = null;
+                                }
+                            });
+                            syncDatas = newSyncDatas;
                         } else {
                             //普通模式, 一次性全部重新生成view
+
+                            removeFn();
+                            newSubject && newSubject.remove({
+                                componet: componet
+                            });
+
+                            newSubject = new CompileSubject(subject);
 
                             CmpxLib.each(datas, function (item, index) {
                                 eachFn.call(componet, item, count, index, componet, fragment, newSubject);
