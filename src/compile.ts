@@ -410,8 +410,6 @@ export interface ISubscribeParam {
     init?: (p: ISubscribeEvent) => void;
     //更新视图
     update?: (p: ISubscribeEvent) => void;
-    //更新视图之后
-    updateAfter?: (p: ISubscribeEvent) => void;
     //视图准备好
     ready?: (p: ISubscribeEvent) => void;
     //节点或视图删除
@@ -478,17 +476,7 @@ export class CompileSubject {
         if (this.isRemove) return;
         CmpxLib.each(this.datas, function (item: ISubscribeParam) {
             if (item.update) {
-                item.update && item.update(p);
-            }
-        });
-        this.updateAfter(p);
-    }
-
-    private updateAfter(p: ISubscribeEvent) {
-        if (this.isRemove) return;
-        CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item.updateAfter) {
-                item.updateAfter && item.updateAfter(p);
+                item.update(p);
             }
         });
     }
@@ -965,14 +953,14 @@ export class Compile {
 
                         if (syncFn){
                             //同步模式，同步性生成view
-                            let oldDatas = CmpxLib.isArray(value) ? value : [value],
+                            let oldDatas = value ? (CmpxLib.isArray(value) ? value : [value]) : null,
                                 newSyncDatas = [], frNodePos = 0, lastNode:Node = refNode;
 
                             CmpxLib.each(datas, function (item, index) {
                                 let oldItem = oldDatas[index],
-                                    syncItem = syncDatas[index],
+                                    syncItem = syncDatas && syncDatas[index],
                                     idx = syncItem ? syncFn(oldItem, count, index, datas) : -1;
-                                if (idx >= 0) {
+                                if (syncItem && idx >= 0) {
                                     //如果存在
                                     if (syncItem.index != idx) {
                                         //如果位置不一样，处理位置
