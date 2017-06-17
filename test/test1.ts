@@ -8,6 +8,8 @@ import fs = require('fs');
 
 var tmpl = `
 <div $array="divList">
+  {{for item in {} sync}}{{/for}}
+  {{for item in {} sync="this.syncFn"}}{{/for}}
   divText
   {{for item in [1]}}
   <span $var="span1" $array="spanList" id="span1" text="{{'asdfafd'}}" style="{{'color:red'}}" > spanText{{>this.user}}{{!"this"}} </span>

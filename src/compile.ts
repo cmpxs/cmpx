@@ -175,7 +175,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     },
     //获取cmd form attrInfo
     //_forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*tmpl\s*=\s*([\'\"])(.*?)\3)*/i,
-    _forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*/i,
+    _forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*(sync)(?:\s*=\s*([\'\"])(.*?)\4)*)*/i,
     _getForAttrInfos = function (content: string): Array<IAttrInfo> {
         var extend = _forAttrRegex.exec(content);
         var attrs: Array<IAttrInfo> = [{
@@ -185,7 +185,8 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
             extend: {
                 item: extend[1],
                 datas: extend[2],
-                tmpl: extend[4]
+                sync: !!extend[3],
+                syncCT: extend[5]
             }
         }];
         return attrs;
@@ -929,7 +930,8 @@ export class Compile {
     public static forRender(
         dataFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         eachFn: (item: any, count: number, index: number, componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
-        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject
+        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject,
+        syncFn:(item: any, count: number, index: number, newItem:any)=>boolean
     ): void {
 
         if (subject.isRemove || !dataFn || !eachFn) return;
@@ -996,7 +998,7 @@ export class Compile {
         var { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
 
         var value, newSubject: CompileSubject;
-        var fragment: DocumentFragment, childNodes: Node[], removeFn = function () {
+        var childNodes: Node[], removeFn = function () {
             childNodes = _removeChildNodes(childNodes);
         };
         subject.subscribe({
@@ -1013,7 +1015,7 @@ export class Compile {
 
                     newSubject = new CompileSubject(subject);
 
-                    fragment = document.createDocumentFragment();
+                    let fragment = document.createDocumentFragment();
                     if (newValue)
                         trueFn.call(componet, componet, fragment, newSubject);
                     else
@@ -1023,11 +1025,12 @@ export class Compile {
                     });
                     childNodes = CmpxLib.toArray(fragment.childNodes);
                     _insertAfter(fragment, refNode, _getParentElement(refNode));
+                    fragment = null;
                 }
             },
             remove: function (p: ISubscribeEvent) {
                 removeFn();
-                newSubject = fragment = childNodes = refNode = null;
+                newSubject = childNodes = refNode = null;
             }
         });
 
@@ -1188,11 +1191,13 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
         return content;
     },
     _buildCompileFnForVar = function (itemName: string, outList: string[]) {
-
-        var str = ['var $last = ($count - $index == 1), ', itemName, '_last = $last, ',
-            '$first = ($index ==  0), ', itemName, '_first = $first, ',
-            '$odd = ($index % 2 ==  0), ', itemName, '_odd = $odd, ',
-            '$even = !$odd, ', itemName, '_even = $even;'].join('');
+        let str = ['var ', itemName, '_index, ', itemName, '_count, $last, ', itemName, '_last, $first, ', itemName, '_first, $odd, ', itemName, '_odd, $even, ', itemName, '_even,\n',
+                'setForVar = function (item, count, index) {\n',
+                'item_index = index, item_count = count;\n',
+                '$last = (count - index == 1), item_last = $last, $first = (index == 0), item_first = $first, $odd = (index % 2 == 0), item_odd = $odd, $even = !$odd, item_even = $even;\n',
+                '};\n',
+                'setForVar.call(componet, item, $count, $index);'
+            ].join('');
         outList.push(str);
     },
     _buildCompileFnContent = function (tagInfos: Array<ITagInfo>, outList: Array<string>, varNameList: string[], preInsert: boolean, inclue?: string[]) {
@@ -1274,9 +1279,10 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                 switch (tagName) {
                     case 'for':
                         var extend = tag.attrs[0].extend,
-                            itemName = extend.item
+                            itemName = extend.item,
+                            fSync = extend.sync
                         outList.push('__forRender(function (componet, element, subject) {');
-                        outList.push('return ' + extend.datas);
+                        outList.push('return ' + extend.datas + ';');
                         outList.push('}, function (' + itemName + ', $count, $index, componet, element, subject) {');
                         _buildCompileFnForVar(itemName, outList);
                         var forTmpl = extend.tmpl;
@@ -1284,7 +1290,17 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                             outList.push('__includeRender("' + _escapeBuildString(forTmpl) + '", componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + itemName + ');');
                         else
                             _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
-                        outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject);');
+                        outList.push('return setForVar;');
+
+                        let fSyFn = 'null';
+                        if (extend.sync){arguments
+                            let syncCT = extend.syncCT;
+                            //function(item, count, index, newItem)
+                            fSyFn = syncCT ? 'function(){ var fn = '+syncCT+'; return fn ? fn.apply(this, arguments) : true; }'
+                                : 'function(item, count, index, newItem){ return item == newItem; }'
+                        }
+
+                        outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, '+fSyFn+');');
                         preInsert = true;
                         break;
                     case 'if':
