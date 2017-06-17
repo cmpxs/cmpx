@@ -505,6 +505,7 @@ export class CompileSubject {
             }
         });
     }
+
 }
 
 
@@ -1003,6 +1004,7 @@ export class Compile {
                             lastNode = null;
                             //删除多余节点
                             CmpxLib.each(syncDatas, function(item){
+                                console.log('remove', item);
                                 if (item.code != code){
                                     item.nodes = _removeChildNodes(item.nodes);
                                     item.subject.remove({
