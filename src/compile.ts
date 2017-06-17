@@ -931,7 +931,7 @@ export class Compile {
         dataFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         eachFn: (item: any, count: number, index: number, componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject,
-        syncFn:(item: any, count: number, index: number, newItem:any)=>boolean
+        syncFn:(item: any, count: number, index: number, newList:any[])=>number
     ): void {
 
         if (subject.isRemove || !dataFn || !eachFn) return;
@@ -939,9 +939,12 @@ export class Compile {
         let { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
 
         let value: any, newSubject: CompileSubject;
-        let childNodes: Node[], removeFn = function () {
-            childNodes = _removeChildNodes(childNodes);
-        };
+        let childNodes: Node[],
+            syncDatas:{index:number,nodes?:Node[], fn:()=>void}[],
+            removeFn = function () {
+                if (!syncFn)
+                    childNodes = _removeChildNodes(childNodes);
+            };
         subject.subscribe({
             update: function (p: ISubscribeEvent) {
                 let datas = dataFn.call(componet, componet, parentElement, subject);
@@ -961,19 +964,62 @@ export class Compile {
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
 
+                        let fragment = document.createDocumentFragment(),
+                            count = datas.length;
                         newSubject = new CompileSubject(subject);
 
-                        let fragment = document.createDocumentFragment();
-                        let count = datas.length;
-                        CmpxLib.each(datas, function (item, index) {
-                            eachFn.call(componet, item, count, index, componet, fragment, newSubject);
-                        });
-                        newSubject.update({
-                            componet: componet
-                        });
-                        childNodes = CmpxLib.toArray(fragment.childNodes);
-                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        if (syncFn){
+                            //同步模式，同步性生成view
+                            let oldDatas = CmpxLib.isArray(value) ? value : [value],
+                                newSyncDatas = [], frNodePos = 0, lastNode:Node;
+
+                            CmpxLib.each(datas, function (item, index) {
+                                let oldItem = oldDatas[index],
+                                    syncItem = syncDatas[index],
+                                    idx = syncItem ? syncFn(oldItem, count, index, datas) : -1;
+                                if (idx >= 0){
+                                   if (syncItem.index != idx){
+                                       syncItem.index = idx;
+                                       CmpxLib.each(syncItem.nodes, function(node){
+                                           fragment.appendChild(node);
+                                       });
+                                       frNodePos += syncItem.nodes.length;
+                                   } else{
+                                        if (frNodePos > 0){
+                                            _insertAfter(fragment, refNode, _getParentElement(refNode));
+                                            frNodePos = 0;
+                                        }
+                                       syncItem.fn.call(componet, item, count, index);
+                                   }
+                                } else {
+                                    syncItem = {
+                                        index: index,
+                                        fn:eachFn.call(componet, item, count, index, componet, fragment, newSubject)
+                                    };
+                                    syncItem.nodes = CmpxLib.toArray(fragment.childNodes, frNodePos);
+                                    lastNode = fragment.lastChild;
+                                    frNodePos += syncItem.nodes.length;
+                                }
+                                newSyncDatas.push(syncItem);
+                            });
+                            if (frNodePos > 0) {
+                                _insertAfter(fragment, refNode, _getParentElement(refNode));
+                            }
+                            lastNode = null;
+                        } else {
+                            //普通模式, 一次性全部重新生成view
+
+                            CmpxLib.each(datas, function (item, index) {
+                                eachFn.call(componet, item, count, index, componet, fragment, newSubject);
+                            });
+                            newSubject.update({
+                                componet: componet
+                            });
+                            childNodes = CmpxLib.toArray(fragment.childNodes);
+                            _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        }
                         fragment = null;
+
 
                     } else
                         newSubject = null;
@@ -1295,9 +1341,9 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
                         let fSyFn = 'null';
                         if (extend.sync){arguments
                             let syncCT = extend.syncCT;
-                            //function(item, count, index, newItem)
-                            fSyFn = syncCT ? 'function(){ var fn = '+syncCT+'; return fn ? fn.apply(this, arguments) : true; }'
-                                : 'function(item, count, index, newItem){ return item == newItem; }'
+                            //function(item, count, index, newList)=>返回index表示已存在的位置，-1表示不存在;
+                            fSyFn = syncCT ? 'function(){ var fn = '+syncCT+'; return fn ? fn.apply(this, arguments) : -1; }'
+                                : 'function(item, count, index, newList){ return newList ? newList.indexOf(item) : -1; }'
                         }
 
                         outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, '+fSyFn+');');
