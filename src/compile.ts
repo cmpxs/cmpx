@@ -465,7 +465,7 @@ export class CompileSubject {
         this.isInit = true;
         this.lastInitP = p;
         CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item.init) {
+            if (item && item.init) {
                 item.init(p);
                 item.init = null;
             }
@@ -475,7 +475,7 @@ export class CompileSubject {
     update(p: ISubscribeEvent) {
         if (this.isRemove) return;
         CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item.update) {
+            if (item && item.update) {
                 item.update(p);
             }
         });
@@ -484,7 +484,7 @@ export class CompileSubject {
     ready(p: ISubscribeEvent) {
         if (this.isRemove) return;
         CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item.ready) {
+            if (item && item.ready) {
                 item.ready(p);
                 item.ready = null;
             }
@@ -499,7 +499,7 @@ export class CompileSubject {
         var datas = this.datas;
         this.datas = [];
         CmpxLib.each(datas, function (item: ISubscribeParam) {
-            if (item.remove) {
+            if (item && item.remove) {
                 item.remove(p);
                 item.remove = null;
             }
@@ -518,6 +518,7 @@ let _tmplName = '__tmpl__',
             return tmpls[id];
     },
     _insertAfter = function (newElement: Node, refElement: Node, parent: Node) {
+        if (!parent)return;
         let nextSibling = refElement.nextSibling;
         if (nextSibling) {
             parent.insertBefore(newElement, nextSibling);
@@ -929,7 +930,7 @@ export class Compile {
 
         let value: any, newSubject: CompileSubject, code = 0;
         let childNodes: Node[],
-            syncDatas:{index:number,nodes?:Node[], subject:CompileSubject, code:number, fn:()=>void}[],
+            syncDatas:{index:number,nodes?:Node[], data:any, subject:CompileSubject, change:boolean, code:number, fragm:DocumentFragment, fn:()=>void}[],
             removeFn = function () {
                 if (!syncFn)
                     childNodes = _removeChildNodes(childNodes);
@@ -940,83 +941,105 @@ export class Compile {
                 if (!_equalArray(datas, value)) {
 
                     let isArray = CmpxLib.isArray(datas);
-                    //如果是数组，复制一份，如果不是直接备份，有用比较
-                    value = isArray ? datas.slice() : datas;
 
                     //如果有数据
                     if (datas){
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
                         code++;//代表批次，不同的批次删除
+                        (code >= 999) && (code = 0);
 
-                        let fragment = document.createDocumentFragment(),
-                            count = datas.length;
+                        let count = datas.length;
 
                         if (syncFn){
                             //同步模式，同步性生成view
-                            let oldDatas = value ? (CmpxLib.isArray(value) ? value : [value]) : null,
-                                newSyncDatas = [], frNodePos = 0, lastNode:Node = refNode;
+                            let oldDatas = value ? (CmpxLib.isArray(value) ? value : [value]) : [],
+                                newSyncDatas = [], lastNode:Node = refNode, rmCount=0;
 
-                            CmpxLib.each(datas, function (item, index) {
-                                let oldItem = oldDatas[index],
-                                    syncItem = syncDatas && syncDatas[index],
-                                    idx = syncItem ? syncFn(oldItem, count, index, datas) : -1;
-                                if (syncItem && idx >= 0) {
-                                    //如果存在
-                                    if (syncItem.index != idx) {
-                                        //如果位置不一样，处理位置
-                                        syncItem.index = idx;
-                                        CmpxLib.each(syncItem.nodes, function (node) {
-                                            fragment.appendChild(node);
-                                        });
-                                        frNodePos += syncItem.nodes.length;
-                                        //重新处理for 变量
-                                        syncItem.fn.call(componet, item, count, index);
+                            let rmList = [], dataList = [];
+                            (function(oldDatas, newDatas){
+                                let hasList = [], nIdx;
+                                CmpxLib.each(oldDatas, function(item, index){
+                                    nIdx = syncFn(item.data, count, index, datas);
+                                    if (nIdx >=0 ){
+                                        item.data = newDatas[nIdx];
+                                        item.newIndex = nIdx;
+                                        hasList.push(item);
+                                    } else
+                                        rmList.push(item);
+                                });
+                                CmpxLib.each(newDatas, function(item, index){
+                                    nIdx = CmpxLib.inArray(hasList, function(item){ return item.newIndex == index; });
+                                    if (nIdx >= 0){
+                                        dataList.push(hasList[nIdx]);
                                     } else {
-                                        //如果位置一样，这节点不变
-                                        let tln = fragment.lastChild;
-                                        if (frNodePos > 0) {
-                                            //如果有未插入节点，插入到view
-                                            _insertAfter(fragment, lastNode, _getParentElement(lastNode));
-                                            frNodePos = 0;
-                                        }
-                                        //保存最后节点
-                                        lastNode = syncItem.nodes[syncItem.nodes.length-1] || tln || lastNode;
+                                        dataList.push({
+                                            index:index,
+                                            data:item
+                                        });
                                     }
-                                    syncItem.code = code;
+                                });
+                            })(syncDatas, datas);
+                            syncDatas = dataList;
+                            //删除多余节点
+                            CmpxLib.each(rmList, function(item){
+                                item.nodes = _removeChildNodes(item.nodes);
+                                item.subject.remove({
+                                    componet: componet
+                                });
+                                item.subject = item.nodes = null;
+                            });
+                            let lastIndex = -1;
+                            CmpxLib.each(syncDatas, function (item, index) {
+                                let fragm:DocumentFragment;
+
+                                if (item.fn){
+                                    if (item.index < lastIndex){
+                                        lastIndex = item.index;
+                                        fragm = document.createDocumentFragment();
+                                        CmpxLib.each(item.nodes, function (node) {
+                                            fragm.appendChild(node);
+                                        });
+                                        console.log('update', item.data);
+                                        item.fn.call(componet, item.data, count, index);
+                                        item.subject.update({
+                                            componet: componet
+                                        });
+                                        _insertAfter(fragm, lastNode, _getParentElement(lastNode));
+                                        lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
+                                    } else {
+                                        lastIndex = item.index;
+                                        //重新处理for 变量
+                                        console.log('update1', item.data);
+                                        item.fn.call(componet, item.data, count, index);
+                                        item.subject.update({
+                                            componet: componet
+                                        });
+                                        lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
+                                    }
+                                    item.index = index;
+
                                 } else {
                                 //如果不存在，新建
-                                    let st = new CompileSubject(subject);
-                                    syncItem = {
-                                        code:code,
-                                        index: index,
-                                        subject:st,
-                                        fn:eachFn.call(componet, item, count, index, componet, fragment, st)
-                                    };
-                                    syncItem.nodes = CmpxLib.toArray(fragment.childNodes, frNodePos);
-                                    frNodePos += syncItem.nodes.length;
-                                }
-                                newSyncDatas.push(syncItem);
-                            });
-                            if (frNodePos > 0) {
-                                _insertAfter(fragment, refNode, _getParentElement(refNode));
-                            }
-                            lastNode = null;
-                            //删除多余节点
-                            CmpxLib.each(syncDatas, function(item){
-                                console.log('remove', item);
-                                if (item.code != code){
-                                    item.nodes = _removeChildNodes(item.nodes);
-                                    item.subject.remove({
+                                    console.log('create', item);
+
+                                    let st = item.subject = new CompileSubject(subject);
+                                    fragm = item.fragm = document.createDocumentFragment();
+                                    item.fn = eachFn.call(componet, item.data, count, index, componet, fragm, st);
+                                    st.update({
                                         componet: componet
                                     });
-                                    item.subject = null;
+                                    item.nodes = CmpxLib.toArray(fragm.childNodes);
+                                    _insertAfter(fragm, lastNode, _getParentElement(lastNode));
+                                    lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
                                 }
+
                             });
-                            syncDatas = newSyncDatas;
+
                         } else {
                             //普通模式, 一次性全部重新生成view
-
+                            let fragment = document.createDocumentFragment();
+                            
                             removeFn();
                             newSubject && newSubject.remove({
                                 componet: componet
@@ -1032,12 +1055,15 @@ export class Compile {
                             });
                             childNodes = CmpxLib.toArray(fragment.childNodes);
                             _insertAfter(fragment, refNode, _getParentElement(refNode));
+                            fragment = null;
                         }
-                        fragment = null;
 
 
                     } else
                         newSubject = null;
+
+                    //如果是数组，复制一份，如果不是直接备份，有用比较
+                    value = isArray ? datas.slice() : datas;
                 }
             },
             remove: function (p: ISubscribeEvent) {
@@ -1254,8 +1280,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Func
     _buildCompileFnForVar = function (itemName: string, outList: string[]) {
         let str = ['var ', itemName, '_index, ', itemName, '_count, $last, ', itemName, '_last, $first, ', itemName, '_first, $odd, ', itemName, '_odd, $even, ', itemName, '_even,\n',
                 'setForVar = function (item, count, index) {\n',
-                'item_index = index, item_count = count;\n',
-                '$last = (count - index == 1), item_last = $last, $first = (index == 0), item_first = $first, $odd = (index % 2 == 0), item_odd = $odd, $even = !$odd, item_even = $even;\n',
+                '$index = ', itemName, '_index = index, $count = ', itemName, '_count = count;\n',
+                '$last = ', itemName, '_last = (count - index == 1), $first = ', itemName, '_first = (index == 0), $odd = ', itemName, '_odd = (index % 2 == 0), $even = ', itemName, '_even = !$odd;\n',
                 '};\n',
                 'setForVar.call(componet, item, $count, $index);'
             ].join('');
