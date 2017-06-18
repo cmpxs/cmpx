@@ -928,9 +928,9 @@ export class Compile {
 
         let { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
 
-        let value: any, newSubject: CompileSubject, code = 0;
+        let value: any, newSubject: CompileSubject;
         let childNodes: Node[],
-            syncDatas:{index:number,nodes?:Node[], data:any, subject:CompileSubject, change:boolean, code:number, fragm:DocumentFragment, fn:()=>void}[],
+            syncDatas:any[],
             removeFn = function () {
                 if (!syncFn)
                     childNodes = _removeChildNodes(childNodes);
@@ -946,20 +946,20 @@ export class Compile {
                     if (datas){
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
-                        code++;//代表批次，不同的批次删除
-                        (code >= 999) && (code = 0);
 
                         let count = datas.length;
 
                         if (syncFn){
                             //同步模式，同步性生成view
-                            let oldDatas = value ? (CmpxLib.isArray(value) ? value : [value]) : [],
-                                newSyncDatas = [], lastNode:Node = refNode, rmCount=0;
+                            let lastNode:Node = refNode;
 
-                            let rmList = [], dataList = [];
+                            let rmList = [],    //要删除的数据
+                                dataList = [];  //合并后的数据
                             (function(oldDatas, newDatas){
                                 let hasList = [], nIdx;
+                                //计算要删除的数据和保留的数据
                                 CmpxLib.each(oldDatas, function(item, index){
+                                    //在新数据的位置
                                     nIdx = syncFn(item.data, count, index, datas);
                                     if (nIdx >=0 ){
                                         item.data = newDatas[nIdx];
@@ -968,11 +968,15 @@ export class Compile {
                                     } else
                                         rmList.push(item);
                                 });
+                                //新数据与保留数据合并
                                 CmpxLib.each(newDatas, function(item, index){
+                                    //在保留数据里的位置
                                     nIdx = CmpxLib.inArray(hasList, function(item){ return item.newIndex == index; });
                                     if (nIdx >= 0){
+                                        //保留数据，已有数据
                                         dataList.push(hasList[nIdx]);
                                     } else {
+                                        //新数据, 没有fn属性
                                         dataList.push({
                                             index:index,
                                             data:item
@@ -981,7 +985,7 @@ export class Compile {
                                 });
                             })(syncDatas, datas);
                             syncDatas = dataList;
-                            //删除多余节点
+                            //删除多余节点(Node)
                             CmpxLib.each(rmList, function(item){
                                 item.nodes = _removeChildNodes(item.nodes);
                                 item.subject.remove({
@@ -994,34 +998,39 @@ export class Compile {
                                 let fragm:DocumentFragment;
 
                                 if (item.fn){
+                                    //根据fn数据来确认保留数据
+
                                     if (item.index < lastIndex){
+                                        //根据原有index，如果大过上一个从中保留数据的原有index,移动原来的node
+
                                         lastIndex = item.index;
                                         fragm = document.createDocumentFragment();
                                         CmpxLib.each(item.nodes, function (node) {
                                             fragm.appendChild(node);
                                         });
-                                        console.log('update', item.data);
+                                        //console.log('update', item.data);
                                         item.fn.call(componet, item.data, count, index);
                                         item.subject.update({
                                             componet: componet
                                         });
                                         _insertAfter(fragm, lastNode, _getParentElement(lastNode));
-                                        lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
                                     } else {
+                                        //不用移动位置，只刷新数据
+
                                         lastIndex = item.index;
                                         //重新处理for 变量
-                                        console.log('update1', item.data);
+                                        //console.log('update1', item.data);
                                         item.fn.call(componet, item.data, count, index);
                                         item.subject.update({
                                             componet: componet
                                         });
-                                        lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
                                     }
+                                    //设置现在的index
                                     item.index = index;
 
                                 } else {
                                 //如果不存在，新建
-                                    console.log('create', item);
+                                    //console.log('create', item);
 
                                     let st = item.subject = new CompileSubject(subject);
                                     fragm = item.fragm = document.createDocumentFragment();
@@ -1031,8 +1040,9 @@ export class Compile {
                                     });
                                     item.nodes = CmpxLib.toArray(fragm.childNodes);
                                     _insertAfter(fragm, lastNode, _getParentElement(lastNode));
-                                    lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
                                 }
+                                //设置新的loasNode，用于插入位置
+                                lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
 
                             });
 
