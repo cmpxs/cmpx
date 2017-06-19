@@ -49,23 +49,23 @@ interface IAttrInfo {
 
 //新建一个text节点
 var _newTextContent = function (tmpl: string, start: number, end: number): ITagInfo {
-    var text = tmpl.substring(start, end),
-        bind = _cmdDecodeAttrRegex.test(text),
-        bindInfo: IBindInfo = bind ? _getBind(text, '"') : null;
-    return {
-        tagName: '',
-        target: false,
-        cmd: false,
-        find: text,
-        content: bind ? "" : text,
-        attrs: null,
-        end: true,
-        single: true,
-        index: start,
-        bind: bind,
-        bindInfo: bindInfo
-    };
-},
+        var text = tmpl.substring(start, end),
+            bind = _cmdDecodeAttrRegex.test(text),
+            bindInfo: IBindInfo = bind ? _getBind(text, '"') : null;
+        return {
+            tagName: '',
+            target: false,
+            cmd: false,
+            find: text,
+            content: bind ? "" : text,
+            attrs: null,
+            end: true,
+            single: true,
+            index: start,
+            bind: bind,
+            bindInfo: bindInfo
+        };
+    },
     _singleCmd = {
         'include': true
     },
@@ -581,7 +581,7 @@ export class CompileRender {
         let fn: any;
         if (CmpxLib.isString(context)) {
             let tagInfos = _makeTagInfos(CmpxLib.trim(context, true));
-            fn = _buildCompileFn(tagInfos, param);
+            fn = _buildCompileFn(tagInfos);
             //console.log(tagInfos);
         } else
             fn = context;
@@ -596,7 +596,7 @@ export class CompileRender {
      * @param refElement 在element之后插入内容
      * @param parentComponet 父组件
      */
-    complie(refNode: Node, parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void, subjectExclude?: { [type: string]: boolean }): { newSubject: CompileSubject, refComponet: Componet } {
+    complie(refNode: Node, parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
         subject || (subject = (parentComponet ? parentComponet.$subObject : null));
@@ -672,7 +672,8 @@ export class CompileRender {
                     fragment = refNode = componet = parentElement = parentComponet = null;
                 }
             });
-            this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, this.param);
+            let pt = CmpxLib.extend({}, this.param)
+            this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, CmpxLib.extend(pt, param));
             childNodes = CmpxLib.toArray(fragment.childNodes);
             newSubject.update({
                 componet: componet
@@ -1153,7 +1154,7 @@ export class Compile {
                             componet: preComponet
                         });
 
-                        let { newSubject, refComponet } = newRender.complie(refNode, componet, subject);
+                        let { newSubject, refComponet } = newRender.complie(refNode, componet, subject, null, null, param);
                         preSubject = newSubject;
                         preComponet = refComponet;
 
@@ -1182,28 +1183,20 @@ export class Compile {
 
 }
 
-var _buildCompileFn = function (tagInfos: Array<ITagInfo>, param?: Object): Function {
-    var outList = [], varNameList = [];
+var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
+        var outList = [], varNameList = [];
 
-    _buildCompileFnContent(tagInfos, outList, varNameList, true);
+        _buildCompileFnContent(tagInfos, outList, varNameList, true);
 
-    varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
-    param && outList.unshift(_getCompileFnParam(param));
-    outList.unshift(`var __tmplRender = Compile.tmplRender,
-    __createComponet = Compile.createComponet, __setViewvar = Compile.setViewvar,
-    __setAttributeCP = Compile.setAttributeCP, __createElement = Compile.createElement,
-    __setAttribute = Compile.setAttribute,__createTextNode = Compile.createTextNode,
-    __forRender = Compile.forRender, __ifRender = Compile.ifRender,
-    __includeRender = Compile.includeRender;`);
+        varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
+        outList.unshift(`var __tmplRender = Compile.tmplRender,
+        __createComponet = Compile.createComponet, __setViewvar = Compile.setViewvar,
+        __setAttributeCP = Compile.setAttributeCP, __createElement = Compile.createElement,
+        __setAttribute = Compile.setAttribute,__createTextNode = Compile.createTextNode,
+        __forRender = Compile.forRender, __ifRender = Compile.ifRender,
+        __includeRender = Compile.includeRender;`);
 
-    return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', '__p__', outList.join('\n'));
-},
-    _getCompileFnParam = function (param: Object): string {
-        var pList = [];
-        CmpxLib.eachProp(param, function (item, name) {
-            pList.push([name, ' = ', '__p__.', name].join(''));
-        });
-        return 'var ' + pList.join(', ') + ';';
+        return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
     },
     _buildCpFnRetRmRegex = /\s*\=\s*\[\s*\]\s*$/,
     _escapeStringRegex = /([\"\\])/gm,

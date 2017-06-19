@@ -301,12 +301,6 @@ function _makeSpecTags() {
   CmpxLib.eachProp(_htmlTagDefConfig, (item: HtmlTagDef, name: string) => {
     item.raw && rawTags.push(name);
   });
-  // let o = HtmlDef.singleTags = {};
-  // CmpxLib.each(singleTags, (name: string) => o[name] = true);
-  // o = HtmlDef.rawTags = {};
-  // CmpxLib.each(rawTags, (name: string) => o[name] = true);
-  // o = HtmlDef.escapeRawTags = {};
-  // CmpxLib.each(escapeRawTags, (name: string) => o[name] = true);
 
   let rawNames = rawTags.join('|');
   _rawContentRegex = new RegExp('<\\s*(' + rawNames + ')(\\s+(?:[^>]*))*>((?:.|\\n|\\r)*?)<\\s*/\\s*\\1\\s*>', 'gmi');

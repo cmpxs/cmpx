@@ -14,6 +14,10 @@ var tmpl = `
   {{for item in [1]}}
   <span $var="span1" $array="spanList" id="span1" text="{{'asdfafd'}}" style="{{'color:red'}}" > spanText{{>this.user}}{{!"this"}} </span>
   {{/for}}
+  {{tmpl id="tmpl1" let="list=param.user"}}
+  safs
+  {{/tmpl}}
+  {{include tmpl="tmpl1" param="{index:this.user}" }}
 </div>  
 `;
 

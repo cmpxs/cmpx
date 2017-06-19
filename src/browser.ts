@@ -16,16 +16,15 @@ let _getParentElement = HtmlDef.getParentElement,
         element[_htmlTtype.test(name) ? 'innerHTML' : 'innerText'] = content || "";
         _setAttribute(element, attrs);
         return element;
-    };
-
-let _rawTag = new HtmlTagDef({
-    //不解释内容，在createElement创建器传入content内容
-    raw: true,
-    //单行tag
-    single: false,
-    //创建器
-    createElement: _createElementRaw
-});
+    },
+    _rawTag = new HtmlTagDef({
+        //不解释内容，在createElement创建器传入content内容
+        raw: true,
+        //单行tag
+        single: false,
+        //创建器
+        createElement: _createElementRaw
+    });
 
 /**
  * htmlDef配置

@@ -74,13 +74,13 @@ export default class CmpxLib {
             && !CmpxLib.isElement(obj) && !CmpxLib.isWindow(obj);//IE8以下isElement, isWindow认为Object
     }
 
-    static tryCatch(tryFn: Function, catchFn: (e: any) => any, args: Array<any> = [], thisArg: any = null): any {
-        try {
-            return tryFn.apply(thisArg, args);
-        } catch (e) {
-            return catchFn.call(thisArg, e);
-        }
-    }
+    // static tryCatch(tryFn: Function, catchFn: (e: any) => any, args: Array<any> = [], thisArg: any = null): any {
+    //     try {
+    //         return tryFn.apply(thisArg, args);
+    //     } catch (e) {
+    //         return catchFn.call(thisArg, e);
+    //     }
+    // }
 
     static isPlainObject(obj: any) {
         if (!CmpxLib.isObject(obj)) return false;
@@ -173,7 +173,7 @@ export default class CmpxLib {
 
     static extend(obj: Object, p: Object): Object {
         if (obj && p) {
-            CmpxLib.eachProp(p, (item: string, name: string) => obj[name] = item);
+            CmpxLib.eachProp(p, function(item: string, name: string){ obj[name] = item; });
         }
         return obj;
     }
