@@ -531,21 +531,10 @@ let _tmplName = '__tmpl__',
         // element['type'] = 'text/html';
         // return element;
     },
-    _getRefNode = function (parentNode: Node, insertTemp: boolean): { refNode: Node, isInsertTemp: boolean } {
-        var tNode: Node;
-        if (insertTemp) {
-            tNode = _createTempNode();
-            parentNode.appendChild(tNode);
-        } else {
-            tNode = parentNode.lastChild;
-            if (!tNode) {
-                insertTemp = true;
-                tNode = _createTempNode();
-                parentNode.appendChild(tNode);
-            }
-        }
-        //注意tmplElement是Comment, 在IE里只能取到parentNode
-        return { refNode: tNode, isInsertTemp: insertTemp };
+    _getRefNode = function (parentNode: Node): Node {
+        var tNode: Node = _createTempNode();
+        parentNode.appendChild(tNode);
+        return tNode;
     },
     _equalArrayIn = function (array1: Array<any>, array2: Array<any>) {
         var ok = true;
@@ -684,13 +673,13 @@ export class CompileRender {
                 }
             });
             this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, this.param);
+            childNodes = CmpxLib.toArray(fragment.childNodes);
             newSubject.update({
                 componet: componet
             });
             readyFn();
         },
         readyFn = function () {
-            childNodes = CmpxLib.toArray(fragment.childNodes);
             _insertAfter(fragment, refNode, _getParentElement(refNode));
             isNewComponet && componet.onReady(function () { }, null);
             newSubject.ready({
@@ -741,7 +730,7 @@ export class Compile {
 
         let vm: IVM = _registerVM[name],
             componetDef: any = vm.componetDef,
-            { refNode, isInsertTemp } = _getRefNode(parentElement, false);
+            refNode = _getRefNode(parentElement);
 
         Compile.renderComponet(componetDef, refNode, function () { }, componet, subject, contextFn);
 
@@ -926,14 +915,13 @@ export class Compile {
 
         if (subject.isRemove || !dataFn || !eachFn) return;
 
-        let { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
+        let refNode = _getRefNode(parentElement);
 
         let value: any, newSubject: CompileSubject;
         let childNodes: Node[],
             syncDatas:any[],
             removeFn = function () {
-                if (!syncFn)
-                    childNodes = _removeChildNodes(childNodes);
+                childNodes = _removeChildNodes(childNodes);
             };
         subject.subscribe({
             update: function (p: ISubscribeEvent) {
@@ -1008,7 +996,6 @@ export class Compile {
                                         CmpxLib.each(item.nodes, function (node) {
                                             fragm.appendChild(node);
                                         });
-                                        //console.log('update', item.data);
                                         item.fn.call(componet, item.data, count, index);
                                         item.subject.update({
                                             componet: componet
@@ -1019,7 +1006,6 @@ export class Compile {
 
                                         lastIndex = item.index;
                                         //重新处理for 变量
-                                        //console.log('update1', item.data);
                                         item.fn.call(componet, item.data, count, index);
                                         item.subject.update({
                                             componet: componet
@@ -1030,15 +1016,14 @@ export class Compile {
 
                                 } else {
                                 //如果不存在，新建
-                                    //console.log('create', item);
 
                                     let st = item.subject = new CompileSubject(subject);
-                                    fragm = item.fragm = document.createDocumentFragment();
+                                    fragm = document.createDocumentFragment();
                                     item.fn = eachFn.call(componet, item.data, count, index, componet, fragm, st);
+                                    item.nodes = CmpxLib.toArray(fragm.childNodes);
                                     st.update({
                                         componet: componet
                                     });
-                                    item.nodes = CmpxLib.toArray(fragm.childNodes);
                                     _insertAfter(fragm, lastNode, _getParentElement(lastNode));
                                 }
                                 //设置新的loasNode，用于插入位置
@@ -1060,10 +1045,10 @@ export class Compile {
                             CmpxLib.each(datas, function (item, index) {
                                 eachFn.call(componet, item, count, index, componet, fragment, newSubject);
                             });
+                            childNodes = CmpxLib.toArray(fragment.childNodes);
                             newSubject.update({
                                 componet: componet
                             });
-                            childNodes = CmpxLib.toArray(fragment.childNodes);
                             _insertAfter(fragment, refNode, _getParentElement(refNode));
                             fragment = null;
                         }
@@ -1092,7 +1077,7 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        var { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
+        var refNode = _getRefNode(parentElement);
 
         var value, newSubject: CompileSubject;
         var childNodes: Node[], removeFn = function () {
@@ -1117,10 +1102,10 @@ export class Compile {
                         trueFn.call(componet, componet, fragment, newSubject);
                     else
                         falseFn.call(componet, componet, fragment, newSubject);
+                    childNodes = CmpxLib.toArray(fragment.childNodes);
                     newSubject.update({
                         componet: componet
                     });
-                    childNodes = CmpxLib.toArray(fragment.childNodes);
                     _insertAfter(fragment, refNode, _getParentElement(refNode));
                     fragment = null;
                 }
@@ -1155,7 +1140,7 @@ export class Compile {
         } else {
             let render: CompileRender,
                 preSubject: CompileSubject, preComponet: Componet,
-                { refNode, isInsertTemp } = _getRefNode(parentElement, insertTemp);
+                refNode = _getRefNode(parentElement);
 
             subject.subscribe({
                 update: function (p: ISubscribeEvent) {
@@ -1175,7 +1160,7 @@ export class Compile {
                     }
                 },
                 remove: function (p: ISubscribeEvent) {
-                    render = null;
+                    render = preSubject = preComponet = refNode = null;
                 }
             });
         }
