@@ -949,7 +949,7 @@ export class Compile {
                                 //计算要删除的数据和保留的数据
                                 CmpxLib.each(oldDatas, function(item, index){
                                     //在新数据的位置
-                                    nIdx = syncFn(item.data, count, index, datas);
+                                    nIdx = syncFn.call(componet, item.data, count, index, datas);
                                     if (nIdx >=0 ){
                                         item.data = newDatas[nIdx];
                                         item.newIndex = nIdx;
