@@ -1,6 +1,6 @@
 import CmpxLib from './cmpxLib';
 
-export default class CmpxEvent {
+export class CmpxEvent {
     private events: any[] = [];
 
     /**
@@ -28,10 +28,10 @@ export default class CmpxEvent {
      * @param args 触发传入参数
      * @param thisArg this对象
      */
-    trigger(args: any[], thisArg: any): any {
+    trigger(args: any[], thisArg?: any): any {
         let ret: any;
         CmpxLib.each(this.events, function (item: any) {
-            ret = item && this.apply(thisArg, args);
+            ret = item && item.apply(thisArg, args);
             return ret;
         });
         return ret;

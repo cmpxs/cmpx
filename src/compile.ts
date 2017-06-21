@@ -1,7 +1,7 @@
 import CmpxLib from './cmpxLib';
 import { HtmlDef, HtmlTagDef, IHtmlAttrDef, ICreateElementAttr } from './htmlDef';
 import { Componet } from './componet';
-import CmpxEvent from './cmpxEvent';
+import { CmpxEvent } from './cmpxEvent';
 
 
 var _undef: any;
@@ -789,7 +789,9 @@ export class Compile {
             if (isEvent) {
                 let isBind = false,
                     eventDef = componet[name],
-                    eventFn: any = function (args) { return content.event.apply(componet, args); };
+                    eventFn: any = function () {
+                        return content.event.apply(parent, arguments);
+                    };
                 eventDef || (eventDef = componet[name] = new CmpxEvent());
                 subject.subscribe({
                     update: function (p: ISubscribeEvent) {
