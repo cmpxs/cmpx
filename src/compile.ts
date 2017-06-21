@@ -769,7 +769,7 @@ export class Compile {
     public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject){
         let vInfo = addFn && addFn.call(componet, componet, element),
             vv:IViewvarDef = _getViewvarDef(componet),
-            propKey = vv[vInfo.name];
+            propKey = vv && vv[vInfo.name];
 
         (vv && propKey) && (componet[propKey] = vInfo.value);
 
