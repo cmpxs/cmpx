@@ -196,14 +196,17 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     _onlyBindRegex = /^\$\(\$[^$]*\$\)\$$/,
     //获取内容绑定信息，如 name="aaa{{this.name}}"
     _getBind = function (value: string, split: string): IBindInfo {
+        value = _escapeBuildString(value);
+
         let write: string, event: string,
             onceList = [], read: boolean = false, isOnce: boolean = false,
             onlyBing = _onlyBindRegex.test(value),
             readTxt:string;
 
-        let type: string = '', txt: string, reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
+        let type: string = '', reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
             content = decodeURIComponent(content);
             reg = _bindTypeRegex.exec(content);
+            let txt: string;
             if (reg) {
                 type = reg[1];
                 txt = reg[2];
