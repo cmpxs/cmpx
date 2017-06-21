@@ -788,7 +788,20 @@ export class Compile {
                             content.write.call(parent, newValue);
                             parent.$updateAsync();
                         }
-                    };
+                    },
+                    readFn = function(p: ISubscribeEvent){
+                        if (isRead) {
+                            newValue = content.read.call(parent);
+                            if (value != newValue) {
+                                value = newValue;
+                                componet[name] = value;
+                                componet.$updateAsync();
+                            }
+                        }
+                    },
+                    pSubP:ISubscribeParam = isWrite ? parent.$subObject.subscribe({
+                        update:readFn
+                    }) : null;
                 let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
                 subject.subscribe({
                     update: function (p: ISubscribeEvent) {
@@ -804,6 +817,9 @@ export class Compile {
                         } else if (isWrite) {
                             writeFn(p);
                         }
+                    },
+                    remove:function(){
+                        pSubP && parent.$subObject && parent.$subObject.unSubscribe(pSubP);
                     }
                 });
             }
