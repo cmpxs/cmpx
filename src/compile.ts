@@ -421,7 +421,6 @@ export interface ISubscribeParam {
 }
 
 export class CompileSubject {
-    private datas: Array<ISubscribeParam> = [];
 
     constructor(subject?: CompileSubject, exclude?: { [type: string]: boolean }) {
         if (subject) {
@@ -434,24 +433,49 @@ export class CompileSubject {
                 });
                 this.subject = subject;
                 this.isInit = subject.isInit;
-                this.lastInitP = subject.lastInitP;
+                this.isReady = subject.isReady;
             }
         }
     }
 
+    private subscribeIn(name:string, p: ISubscribeParam): void{
+        let listName = name+'List',
+            list = this[listName] || (this[listName] =  []);
+        list.push(p[name]);
+    }
+
     subscribe(p: ISubscribeParam): ISubscribeParam {
         if (!this.isRemove) {
-            this.datas.push(p);
+            p.update && this.subscribeIn('update', p);
+            p.ready && this.subscribeIn('ready', p);
+            p.remove && this.subscribeIn('remove', p);
+            if (this.ready)
+                p.ready && p.ready(null);
+            else
+                p.ready && this.subscribeIn('ready', p);
             if (this.isInit)
-                p.init && (p.init(this.lastInitP), p.init = null);
+                p.init && p.init(null);
+            else
+                p.init && this.subscribeIn('init', p);
         }
         return p;
     }
 
+    private unSubscribeIn(name:string, p: ISubscribeParam): void{
+        let list = this[name+'List'];
+        if (list){
+            let index = list.indexOf(p[name]);
+            (index >= 0) && list.splice(index, 1);
+        }
+    }
+
     unSubscribe(p: ISubscribeParam): void {
-        let index = this.datas.indexOf(p);
-        if (index >= 0)
-            this.datas.splice(index, 1);
+        if (!this.isRemove){
+            p.update && this.unSubscribeIn('update', p);
+            p.ready && this.unSubscribeIn('ready', p);
+            p.remove && this.unSubscribeIn('remove', p);
+            p.init && this.unSubscribeIn('init', p);
+        }
     }
 
     private linkParam: ISubscribeParam;
@@ -462,51 +486,53 @@ export class CompileSubject {
     }
 
     isInit: boolean = false;
-    lastInitP: any;
+    private initList:ISubscribeParam[];
     init(p: ISubscribeEvent) {
         if (this.isRemove) return;
         this.isInit = true;
-        this.lastInitP = p;
-        CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item && item.init) {
-                item.init(p);
-                item.init = null;
-            }
+        var list = this.initList;
+        this.initList = [];
+        CmpxLib.each(list, function (fn:any) {
+            fn && fn(p);
         });
     }
 
+    private updateList:ISubscribeParam[];
     update(p: ISubscribeEvent) {
         if (this.isRemove) return;
-        CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item && item.update) {
-                item.update(p);
-            }
+        CmpxLib.each(this.updateList, function (fn:any) {
+            fn && fn(p);
         });
     }
 
+    isReady:boolean = false;
+    private readyList:ISubscribeParam[];
     ready(p: ISubscribeEvent) {
         if (this.isRemove) return;
-        CmpxLib.each(this.datas, function (item: ISubscribeParam) {
-            if (item && item.ready) {
-                item.ready(p);
-                item.ready = null;
-            }
+        var list = this.readyList;
+        this.readyList = [];
+        list && list.reverse();
+        CmpxLib.each(list, function (fn:any) {
+            fn && fn(p);
         });
     }
 
     isRemove: boolean = false;
+    private removeList:ISubscribeParam[];
     remove(p: ISubscribeEvent) {
         if (this.isRemove) return;
         this.isRemove = true;
         this.unLinkSubject();
-        var datas = this.datas;
-        this.datas = [];
-        CmpxLib.each(datas, function (item: ISubscribeParam) {
-            if (item && item.remove) {
-                item.remove(p);
-                item.remove = null;
-            }
+        var removeList = this.removeList;
+        this.clear();
+        CmpxLib.each(removeList, function (fn:any) {
+            fn && fn(p);
         });
+    }
+
+    private clear(){
+        this.initList = this.readyList
+            = this.updateList = this.removeList = null;
     }
 
 }
