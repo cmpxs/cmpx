@@ -815,22 +815,7 @@ export class Compile {
                             parent.$updateAsync();
                         }
                     },
-                    readFn = function(p: ISubscribeEvent){
-                        if (isRead) {
-                            newValue = content.read.call(parent);
-                            if (value != newValue) {
-                                value = newValue;
-                                componet[name] = value;
-                                componet.$updateAsync();
-                            }
-                        }
-                    },
-                    pSubP:ISubscribeParam = isWrite ? parent.$subObject.subscribe({
-                        update:readFn
-                    }) : null;
-                let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
-                subject.subscribe({
-                    update: function (p: ISubscribeEvent) {
+                    updateFn = function(p: ISubscribeEvent){
                         if (isRead) {
                             newValue = content.read.call(parent);
                             if (value != newValue) {
@@ -844,6 +829,12 @@ export class Compile {
                             writeFn(p);
                         }
                     },
+                    pSubP:ISubscribeParam = isWrite || isRead ? parent.$subObject.subscribe({
+                        update:updateFn
+                    }) : null;
+                let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
+                subject.subscribe({
+                    update: updateFn,
                     remove:function(){
                         pSubP && parent.$subObject && parent.$subObject.unSubscribe(pSubP);
                     }
