@@ -389,7 +389,7 @@ interface IViewvarDef {
 }
 var _viewvarName = '__viewvar__',
     _getViewvarDef = function (componet: Componet): IViewvarDef {
-        return componet[_viewvarName];
+        return componet && componet[_viewvarName];
     };
 /**
  * 引用模板变量$var
@@ -766,15 +766,18 @@ export class Compile {
 
     }
 
-    public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject){
+    public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean){
         let vInfo = addFn && addFn.call(componet, componet, element),
-            vv:IViewvarDef = _getViewvarDef(componet),
-            propKey = vv && vv[vInfo.name];
+            owner = isComponet ? componet.$parent : componet,
+            vv:IViewvarDef = _getViewvarDef(owner),
+            propKey = vv && vv[vInfo.name],
+            hasDef = !!(vv && propKey);
 
-        (vv && propKey) && (componet[propKey] = vInfo.value);
+        hasDef && (owner[propKey] = vInfo.value);
 
         subject.subscribe({
             remove:function(){
+                hasDef && (owner[propKey] = null);
                 removeFn && removeFn.call(componet, componet, element);
             }
         });
@@ -1341,7 +1344,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject)');
+                                outList.push('}, componet, element, subject, true)');
                             }
                             _buildAttrContentCP(tag.attrs, outList);
                             //createComponet下只能放tmpl
@@ -1370,7 +1373,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(element); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject)');
+                                outList.push('}, componet, element, subject, false)');
                             }
                             _buildAttrContent(bindAttrs, outList);
                             hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
