@@ -6,4 +6,4 @@ npm install
 
 npm satrt
 
-//todo: $render参数问题, {{for}}差异更新？
+//todo: tagName, attrName等大小写处理问题
