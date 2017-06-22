@@ -227,7 +227,6 @@ export class HtmlDef {
         return node.parentElement || (node.parentNode as HTMLElement);
     }
 
-
   /**
    * 获取标签定义
    * @param tagName 标签名称
@@ -250,7 +249,7 @@ export class HtmlDef {
    * @param name 
    */
   static getHtmlAttrDef(name: string): IHtmlAttrDef {
-    return _htmlAttrDefConfig[name] || DEFAULT_ATTR;
+    return _htmlAttrDefConfig[name.toLowerCase()] || DEFAULT_ATTR;
   }
 
   /**
@@ -262,7 +261,7 @@ export class HtmlDef {
   }
 
   static getHtmlEventDef(name: string): IHtmlEventDef {
-    return _htmlEventDefConfig[name] || DEFAULT_EVENT_DEF;
+    return _htmlEventDefConfig[name.toLowerCase()] || DEFAULT_EVENT_DEF;
   }
 
   /**

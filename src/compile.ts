@@ -127,7 +127,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                 }
 
                 var item: ITagInfo = {
-                    tagName: (tagName || txtName).toLowerCase(),
+                    tagName: (tagName || txtName),
                     target: !cmd,
                     cmd: cmd,
                     find: find,
@@ -164,7 +164,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
             var bind = _cmdDecodeAttrRegex.test(value),
                 bindInfo = bind ? _getBind(value, split) : null;
             attrs.push({
-                name: (name || name1).toLowerCase(),
+                name: (name || name1),
                 value: value,
                 bind: bind,
                 bindInfo: bindInfo
