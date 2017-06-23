@@ -340,7 +340,7 @@ export function VM(vm: IVMConfig) {
             componetDef: constructor
         };
         var rdF = function () {
-            _registerVM[vm.name].render = new CompileRender(vm.tmpl, constructor);
+            //_registerVM[vm.name].render = new CompileRender(vm.tmpl, constructor);
             let head = document.head;
             if (vm.style) {
                 head.appendChild(HtmlDef.getHtmlTagDef('style').createElement('style', [{
@@ -379,7 +379,6 @@ let _tmplCount = 0, _tmplFnList = [], _tmplLoaded = function (callback) {
         callback && _tmplFnList.push(callback);
 }, _tmplChk = function () {
     (_tmplCount == 0) && CmpxLib.each(_tmplFnList, function (item: any) {
-        console.log('aaa');
         item();
     });
 };
@@ -615,7 +614,7 @@ export class CompileRender {
         } else
             fn = context;
 
-        // console.log(fn.toString());
+        //console.log(fn);
 
         this.contextFn = fn;
     }
@@ -625,7 +624,7 @@ export class CompileRender {
      * @param refElement 在element之后插入内容
      * @param parentComponet 父组件
      */
-    complie(refNode: Node, parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
+    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
         subject || (subject = (parentComponet ? parentComponet.$subObject : null));
@@ -656,6 +655,9 @@ export class CompileRender {
         if (!componet) {
             throw new Error('render缺少Componet参数');
         }
+        CmpxLib.each(attrs, function(item:ICreateElementAttr){
+            componet[item.name] = item.value;
+        });
         //注意parentElement问题，但现在context只能放{{tmpl}}
         contextFn && contextFn(componet, parentElement, newSubject);
 
@@ -753,7 +755,7 @@ export class Compile {
     }
 
     public static createComponet(
-        name: string, componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
+        name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
         contextFn: (component: Componet, element: HTMLElement, subject: CompileSubject) => void
     ): void {
         if (subject.isRemove) return;
@@ -762,7 +764,8 @@ export class Compile {
             componetDef: any = vm.componetDef,
             refNode = _getRefNode(parentElement);
 
-        Compile.renderComponet(componetDef, refNode, function () { }, componet, subject, contextFn);
+        Compile.renderComponet(componetDef, refNode, attrs, function (subject, componet:Componet) {
+         }, componet, subject, contextFn);
 
     }
 
@@ -1195,7 +1198,7 @@ export class Compile {
                             componet: preComponet
                         });
 
-                        let { newSubject, refComponet } = newRender.complie(refNode, componet, subject, null, null, param);
+                        let { newSubject, refComponet } = newRender.complie(refNode, [], componet, subject, null, null, param);
                         preSubject = newSubject;
                         preComponet = refComponet;
 
@@ -1208,7 +1211,7 @@ export class Compile {
         }
     }
 
-    static renderComponet(componetDef: any, refNode: Node,
+    static renderComponet(componetDef: any, refNode: Node, attrs:ICreateElementAttr[],
         complieEnd?: (newSubject: CompileSubject, refComponet: Componet) => void,
         parentComponet?: Componet, subject?: CompileSubject,
         contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void): void {
@@ -1217,7 +1220,7 @@ export class Compile {
             let vm = _getVmByComponetDef(componetDef),
                 render = vm && vm.render;
             if (!vm) throw new Error('not find @VM default!');
-            let { newSubject, refComponet } = render.complie(refNode, parentComponet, subject, contextFn, { update: true });
+            let { newSubject, refComponet } = render.complie(refNode, attrs, parentComponet, subject, contextFn, { update: true });
             complieEnd && complieEnd.call(refComponet, newSubject, refComponet);
         });
     }
@@ -1334,7 +1337,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                     }
                     if (tag.componet) {
                         if (hasChild || hasAttr || varName) {
-                            outList.push('__createComponet("' + tagName + '", componet, element, subject, function (componet, element, subject) {');
+                            let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
+                            outList.push('__createComponet("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
                                 outList.push('__setViewvar(function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = this;');
@@ -1344,14 +1348,14 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject, true)');
+                                outList.push('}, componet, element, subject, true);');
                             }
-                            _buildAttrContentCP(tag.attrs, outList);
+                            _buildAttrContentCP(bindAttrs, outList);
                             //createComponet下只能放tmpl
                             _buildCompileFnContent(tag.children, outList, varNameList, preInsert, ['tmpl']);
                             outList.push('});');
                         } else {
-                            outList.push('__createComponet("' + tagName + '", componet, element, subject);');
+                            outList.push('__createComponet("' + tagName + '", [], componet, element, subject);');
                         }
                         preInsert = true;
                     } else {
@@ -1373,7 +1377,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 outList.push('}, function(componet, element){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(element); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject, false)');
+                                outList.push('}, componet, element, subject, false);');
                             }
                             _buildAttrContent(bindAttrs, outList);
                             hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);

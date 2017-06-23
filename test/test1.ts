@@ -6,7 +6,14 @@ import 'mocha';
 
 import fs = require('fs');
 
+@VM({name:'test'})
+class TestCP1 extends Componet{
+
+}
+
 var tmpl = `
+<test id="aaaa" name="{{this.name}}"> </test>
+<div id="div1" name="{{this.name}}"> </div>
 <div $array="divList">
   {{for item in {} sync}}{{/for}}
   {{for item in {} sync="this.syncFn"}}{{/for}}

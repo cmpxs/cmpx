@@ -131,7 +131,7 @@ export class Browser extends Platform {
 
             //注意tmplElement是Comment, 在IE里只能取到parentNode
             let parentElement = _getParentElement(bootElement);
-            Compile.renderComponet(componetDef, bootElement, function (newSubject: CompileSubject, refComponet: Componet) {
+            Compile.renderComponet(componetDef, bootElement, [], function (newSubject: CompileSubject, refComponet: Componet) {
                 parentElement.removeChild(bootElement);
                 //console.log(refComponet);
 
