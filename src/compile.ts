@@ -305,9 +305,9 @@ export interface IVMConfig {
     //模板url，可以编译后的function，如果加载失败使用tmpl内容
     tmplUrl?: string | Function;
     //样式文本, 可以和sytleUrl同时使用
-    style?: string;
+    style?: string | Function;
     //样式url, 可以和sytle同时使用
-    styleUrl?: string;
+    styleUrl?: string|Function;
 }
 
 interface IVM {
@@ -342,17 +342,24 @@ export function VM(vm: IVMConfig) {
         var rdF = function () {
             //_registerVM[vm.name].render = new CompileRender(vm.tmpl, constructor);
             let head = document.head;
+
+            if (vm.styleUrl && !CmpxLib.isString(vm.styleUrl)){
+                vm.style = (vm.styleUrl as Function)();
+                vm.styleUrl = null;
+            }
             if (vm.style) {
+                if (!CmpxLib.isString(vm.style))
+                    vm.style = (vm.style as Function)();
                 head.appendChild(HtmlDef.getHtmlTagDef('style').createElement('style', [{
                     name: 'type', value: 'text/css'
-                }], head, vm.style));
+                }], head, vm.style as string));
             }
             if (vm.styleUrl) {
                 head.appendChild(HtmlDef.getHtmlTagDef('link').createElement('link', [{
                     name: 'rel', value: 'stylesheet'
                 }, {
-                    name: 'href', value: vm.styleUrl
-                }], head, vm.style));
+                    name: 'href', value: vm.styleUrl as string
+                }], head));
             }
             //优先tmplUrl
             let tmplUrl: any = vm.tmplUrl;
@@ -624,7 +631,7 @@ export class CompileRender {
      * @param refElement 在element之后插入内容
      * @param parentComponet 父组件
      */
-    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
+    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: Function): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
         subject || (subject = (parentComponet ? parentComponet.$subObject : null));
@@ -704,7 +711,7 @@ export class CompileRender {
                 }
             });
             let pt = CmpxLib.extend({}, this.param)
-            this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, CmpxLib.extend(pt, param));
+            this.contextFn.call(componet, CmpxLib, Compile, componet, fragment, newSubject, CmpxLib.extend(pt, param && param.call(componet)));
             childNodes = CmpxLib.toArray(fragment.childNodes);
             newSubject.update({
                 componet: componet
@@ -1134,6 +1141,14 @@ export class Compile {
         });
     }
 
+    public static updateRender(fn:Function, componet: Componet, element: HTMLElement, subject: CompileSubject):void{
+        subject.subscribe({
+            update:function(){
+               fn.call(componet);
+            }
+        });
+    };
+
     public static ifRender(
         ifFun: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         trueFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
@@ -1197,12 +1212,20 @@ export class Compile {
         };
     }
 
-    public static includeRender(context: any, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: any): void {
+    public static includeRender(context: any, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
         if (!context || subject.isRemove) return;
 
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
-            tmpl && tmpl.call(componet, componet, parentElement, subject, param || {});
+            if (tmpl){
+                let pTmep = param.call(componet) || {};
+                subject.subscribe({
+                    update:function(){
+                        CmpxLib.extend(pTmep,  param.call(componet));
+                    }
+                });
+                tmpl.call(componet, componet, parentElement, subject, pTmep);
+            }
         } else {
             let render: CompileRender,
                 preSubject: CompileSubject, preComponet: Componet,
@@ -1223,7 +1246,10 @@ export class Compile {
                         preSubject = newSubject;
                         preComponet = refComponet;
 
-                    }
+                    } else
+                        preSubject.update({
+                            componet:preComponet
+                        });
                 },
                 remove: function (p: ISubscribeEvent) {
                     render = preSubject = preComponet = refNode = null;
@@ -1258,7 +1284,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         __setAttributeEx = Compile.setAttributeEx, __createElementEx = Compile.createElementEx,
         __createTextNode = Compile.createTextNode, __setViewvar = Compile.setViewvar,
         __forRender = Compile.forRender, __ifRender = Compile.ifRender,
-        __includeRender = Compile.includeRender;`);
+        __includeRender = Compile.includeRender, __updateRender = Compile.updateRender;`);
 
         return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
     },
@@ -1294,16 +1320,6 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
             outList.push('__setAttributeEx(element, "' + names[0] + '", "' + names[1] + '", ' + attr.bindInfo.content + ', componet, subject, isComponet);');
         });
     },
-    // _buildAttrContentCP = function (attrs: Array<IAttrInfo>, outList: Array<string>) {
-    //     if (!attrs) return;
-    //     CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
-    //         if (attr.name == '$var') return;
-    //         if (attr.bind)
-    //             outList.push('__setAttributeCP(element, "' + attr.name + '", ' + attr.bindInfo.content + ', componet, subject);');
-    //         else
-    //             outList.push('__setAttributeCP(element, "' + attr.name + '", "' + _escapeBuildString(attr.value) + '", componet, subject);');
-    //     });
-    // },
     _getViewvarName = function (attrs: Array<IAttrInfo>): { item: string, list: string } {
         let name = { item: null, list: null }, has = false;
         CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
@@ -1355,59 +1371,34 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         varName.item && varNameList.push(varName.item);
                         varName.list && varNameList.push(varName.list + ' = []');
                     }
-                    // if (tag.componet) {
-                    //     if (hasChild || hasAttr || varName) {
-                    //         let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
-                    //         outList.push('__createComponet("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
-                    //         if (varName) {
-                    //             outList.push('__setViewvar(function(){');
-                    //             varName.item && outList.push(varName.item + ' = this;');
-                    //             varName.list && outList.push(varName.list + '.push(this);');
-                    //             varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
-                    //             varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
-                    //             outList.push('}, function(){');
-                    //             varName.item && outList.push(varName.item + ' = null;');
-                    //             varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                    //             outList.push('}, componet, element, subject, isComponet);');
-                    //         }
-                    //         _buildAttrContentCP(bindAttrs, outList);
-                    //         //createComponet下只能放tmpl
-                    //         _buildCompileFnContent(tag.children, outList, varNameList, preInsert, ['tmpl']);
-                    //         outList.push('});');
-                    //     } else {
-                    //         outList.push('__createComponetEx("' + tagName + '", [], componet, element, subject);');
-                    //     }
-                    //     preInsert = true;
-                    // } else {
-                        let htmlTagDef: HtmlTagDef = tag.htmlTagDef,
-                            rawTag = htmlTagDef.raw,
-                            tagContent = rawTag && _getTagContent(tag);
-                        //如果rawTag没有子级
-                        hasChild && (hasChild = !rawTag);
-                        if (hasAttr || hasChild || varName) {
+                    let htmlTagDef: HtmlTagDef = tag.htmlTagDef,
+                        rawTag = htmlTagDef.raw,
+                        tagContent = rawTag && _getTagContent(tag);
+                    //如果rawTag没有子级
+                    hasChild && (hasChild = !rawTag);
+                    if (hasAttr || hasChild || varName) {
 
-                            let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
-                            outList.push('__createElementEx("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
-                            if (varName) {
-                                outList.push('__setViewvar(function(){');
-                                varName.item && outList.push(varName.item + ' = this;');
-                                varName.list && outList.push(varName.list + '.push(this);');
-                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
-                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
-                                outList.push('}, function(){');
-                                varName.item && outList.push(varName.item + ' = null;');
-                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject, isComponet);');
-                            }
-                            _buildAttrContent(bindAttrs, outList);
-                            hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
-
-                            outList.push('}, "' + _escapeBuildString(tagContent) + '");');
-                        } else {
-                            outList.push('__createElementEx("' + tagName + '", [], componet, element, subject, null, "' + _escapeBuildString(tagContent) + '");');
+                        let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
+                        outList.push('__createElementEx("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
+                        if (varName) {
+                            outList.push('__setViewvar(function(){');
+                            varName.item && outList.push(varName.item + ' = this;');
+                            varName.list && outList.push(varName.list + '.push(this);');
+                            varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
+                            varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
+                            outList.push('}, function(){');
+                            varName.item && outList.push(varName.item + ' = null;');
+                            varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                            outList.push('}, componet, element, subject, isComponet);');
                         }
-                        preInsert = false;
-                    // }
+                        _buildAttrContent(bindAttrs, outList);
+                        hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
+
+                        outList.push('}, "' + _escapeBuildString(tagContent) + '");');
+                    } else {
+                        outList.push('__createElementEx("' + tagName + '", [], componet, element, subject, null, "' + _escapeBuildString(tagContent) + '");');
+                    }
+                    preInsert = false;
                 } else {
                     if (tag.bind) {
                         outList.push('__createTextNode(' + tag.bindInfo.content + ', componet, element, subject);');
@@ -1470,7 +1461,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                             incRender: any = incAttr['render'];
                         incRender && (incRender = 'function(){ return ' + incRender.value + '}');
                         let context = incRender ? incRender : ('"' + (incTmpl ? _escapeBuildString(incTmpl.value) : '') + '"');
-                        outList.push('__includeRender(' + context + ', componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + incParam + ');');
+                        outList.push('__includeRender(' + context + ', componet, element, ' + _getInsertTemp(preInsert) + ', subject, function(){ return ' + incParam + ';});');
                         preInsert = true;
                         break;
                     case 'tmpl':
@@ -1479,6 +1470,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                             tmplLet = tmplAttr['let'];
                         outList.push('__tmplRender("' + (tmplId ? _escapeBuildString(tmplId.value) : '') + '", componet, element, subject, function (componet, element, subject, param) {');
                         tmplLet && outList.push('var ' + tmplLet.value + ';');
+                        tmplLet && outList.push('__updateRender(function(){' + tmplLet.value + '}, componet, element, subject);');
                         _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
                         outList.push('});');
                         break;
