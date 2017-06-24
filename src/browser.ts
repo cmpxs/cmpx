@@ -129,11 +129,9 @@ export class Browser extends Platform {
             _doc.removeEventListener(_readyName, _ready, false);
             window.removeEventListener('load', _ready, false);
 
-            //注意tmplElement是Comment, 在IE里只能取到parentNode
             let parentElement = _getParentElement(bootElement);
             Compile.renderComponet(componetDef, bootElement, [], function (newSubject: CompileSubject, refComponet: Componet) {
                 parentElement.removeChild(bootElement);
-                //console.log(refComponet);
 
                 let _unload = function () {
                     window.removeEventListener('unload', _unload);

@@ -617,11 +617,8 @@ export class CompileRender {
         if (CmpxLib.isString(context)) {
             let tagInfos = _makeTagInfos(CmpxLib.trim(context, true));
             fn = _buildCompileFn(tagInfos);
-            //console.log(tagInfos);
         } else
             fn = context;
-
-        //console.log(fn);
 
         this.contextFn = fn;
     }

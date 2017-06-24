@@ -44,8 +44,8 @@ export class Componet {
      * @param tmpl 模板文本
      * @param p 传入模板参数
      */
-    $render(tmpl: string | Function, p?:Object): CompileRender {
-        var rd = new CompileRender(tmpl, null, p);
+    $render(tmpl: string | Function): CompileRender {
+        var rd = new CompileRender(tmpl);
         return rd;
     }
 
