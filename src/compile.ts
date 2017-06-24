@@ -624,7 +624,7 @@ export class CompileRender {
      * @param refElement 在element之后插入内容
      * @param parentComponet 父组件
      */
-    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
+    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: any): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
         subject || (subject = (parentComponet ? parentComponet.$subObject : null));
@@ -659,7 +659,7 @@ export class CompileRender {
             componet[item.name] = item.value;
         });
         //注意parentElement问题，但现在context只能放{{tmpl}}
-        contextFn && contextFn(componet, parentElement, newSubject);
+        contextFn && contextFn(componet, parentElement, newSubject, true);
 
         newSubject.subscribe({
             remove: function (p: ISubscribeEvent) {
@@ -754,9 +754,34 @@ export class Compile {
         _loadTmplFn = loadTmplFn;
     }
 
+    
+    public static createElementEx(name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
+        contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => void, content?: string): void {
+
+        if (subject.isRemove) return;
+
+        if ( _registerVM[name]){
+            Compile.createComponet.apply(this, arguments);
+        } else {
+            Compile.createElement.apply(this, arguments);
+        }
+
+    }
+
+
+    public static createElement(name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
+        contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, content?: string): void {
+
+        if (subject.isRemove) return;
+
+        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content);
+        parentElement.appendChild(element);
+        contextFn && contextFn(componet, element, subject, false);
+    }
+
     public static createComponet(
         name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
-        contextFn: (component: Componet, element: HTMLElement, subject: CompileSubject) => void
+        contextFn: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void
     ): void {
         if (subject.isRemove) return;
 
@@ -770,7 +795,7 @@ export class Compile {
     }
 
     public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean){
-        let vInfo = addFn && addFn.call(componet, componet, element),
+        let vInfo = addFn && addFn.call(isComponet ? componet : element),
             owner = isComponet ? componet.$parent : componet,
             vv:IViewvarDef = _getViewvarDef(owner),
             propKey = vv && vv[vInfo.name],
@@ -781,7 +806,7 @@ export class Compile {
         subject.subscribe({
             remove:function(){
                 hasDef && (owner[propKey] = null);
-                removeFn && removeFn.call(componet, componet, element);
+                removeFn && removeFn.call(isComponet ? componet : element);
             }
         });
     }
@@ -850,16 +875,6 @@ export class Compile {
             }
         } else
             componet[name] = content;
-    }
-
-    public static createElement(name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
-        contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => void, content?: string): void {
-
-        if (subject.isRemove) return;
-
-        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content);
-        parentElement.appendChild(element);
-        contextFn && contextFn(componet, element, subject);
     }
 
     public static createTextNode(content: any, componet: Componet, parentElement: HTMLElement, subject: CompileSubject): Text {
@@ -1214,7 +1229,7 @@ export class Compile {
     static renderComponet(componetDef: any, refNode: Node, attrs:ICreateElementAttr[],
         complieEnd?: (newSubject: CompileSubject, refComponet: Componet) => void,
         parentComponet?: Componet, subject?: CompileSubject,
-        contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject) => void): void {
+        contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void): void {
 
         _tmplLoaded(function () {
             let vm = _getVmByComponetDef(componetDef),
@@ -1340,12 +1355,12 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                             let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
                             outList.push('__createComponet("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
-                                outList.push('__setViewvar(function(componet, element){');
+                                outList.push('__setViewvar(function(){');
                                 varName.item && outList.push(varName.item + ' = this;');
                                 varName.list && outList.push(varName.list + '.push(this);');
                                 varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
                                 varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
-                                outList.push('}, function(componet, element){');
+                                outList.push('}, function(){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
                                 outList.push('}, componet, element, subject, true);');
@@ -1369,14 +1384,14 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                             let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
                             outList.push('__createElement("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
                             if (varName) {
-                                outList.push('__setViewvar(function(componet, element){');
-                                varName.item && outList.push(varName.item + ' = element;');
-                                varName.list && outList.push(varName.list + '.push(element);');
+                                outList.push('__setViewvar(function(){');
+                                varName.item && outList.push(varName.item + ' = this;');
+                                varName.list && outList.push(varName.list + '.push(this);');
                                 varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
                                 varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
-                                outList.push('}, function(componet, element){');
+                                outList.push('}, function(){');
                                 varName.item && outList.push(varName.item + ' = null;');
-                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(element); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
                                 outList.push('}, componet, element, subject, false);');
                             }
                             _buildAttrContent(bindAttrs, outList);
