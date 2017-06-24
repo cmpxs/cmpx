@@ -41,7 +41,10 @@ export function DEFAULT_CREATEELEMENT(name: string, attrs: ICreateElementAttr[],
 }
 
 //注释标签
-let _noteTagRegex = /\<\!--(?:.|\n|\r)*?--\>/gim;
+let _noteTagRegex = /\<\!--(?:.|\n|\r)*?--\>/gim,
+    _extend = function(obj: Object, p: Object):void{
+      p && CmpxLib.eachProp(p, function(item: string, name: string){ obj[name.toLowerCase()] = item; });
+    };
 
 /**
  * HtmlTag定义类
@@ -240,7 +243,7 @@ export class HtmlDef {
    * @param p 标签配置
    */
   static extendHtmlTagDef(p: IHtmlTagDefConfig): void {
-    CmpxLib.extend(_htmlTagDefConfig, p);
+    _extend(_htmlTagDefConfig, p);
     _makeSpecTags();
   }
 
@@ -257,7 +260,7 @@ export class HtmlDef {
    * @param p 
    */
   static extendHtmlAttrDef(p: IHtmlAttrDefConfig): void {
-    CmpxLib.extend(_htmlAttrDefConfig, p);
+    _extend(_htmlAttrDefConfig, p);
   }
 
   static getHtmlEventDef(name: string): IHtmlEventDef {
@@ -269,7 +272,7 @@ export class HtmlDef {
    * @param p 
    */
   static extendHtmlEventDef(p: IHtmlEventDefConfig): void {
-    CmpxLib.extend(_htmlEventDefConfig, p);
+    _extend(_htmlEventDefConfig, p);
   }
 
   // /**
