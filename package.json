@@ -1,6 +1,6 @@
 {
   "name": "cmpx",
-  "version": "0.9.0",
+  "version": "1.0.0-deta",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "tsc": "tsc -p .",
     "build": "rimraf dist && npm run tsc && gulp build",
     "todemo": "npm run build && rimraf ../cmpx-demo/node_modules/cmpx/src/** && rimraf ../cmpx-demo/node_modules/cmpx/bundles/** && gulp todemo",
-    "tonpm": "npm run build && rimraf ../cmpx-npm/src/** && rimraf ../cmpx-npm/bundles/** && gulp tonpm"
+    "tonpm": "npm run build && rimraf ../cmpx-npm/cmpx/src/** && rimraf ../cmpx-npm/cmpx/bundles/** && gulp tonpm"
   },
   "author": "cmpx",
   "license": "MIT",
