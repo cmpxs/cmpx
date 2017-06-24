@@ -810,8 +810,14 @@ export class Compile {
             }
         });
     }
-
-    public static setAttributeCP(element: HTMLElement, name: string, content: any, componet: Componet, subject: CompileSubject): void {
+    public static setAttributeEx(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject, isComponet:boolean): void {
+        if (isComponet){
+            Compile.setAttributeCP.apply(this, arguments);
+        } else {
+            Compile.setAttribute.apply(this, arguments);
+        }
+    }
+    public static setAttributeCP(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
         let isObj = !CmpxLib.isString(content),
             parent = componet.$parent;
         if (isObj) {
@@ -1249,9 +1255,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
 
         varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
         outList.unshift(`var __tmplRender = Compile.tmplRender,
-        __createComponet = Compile.createComponet, __setViewvar = Compile.setViewvar,
-        __setAttributeCP = Compile.setAttributeCP, __createElement = Compile.createElement,
-        __setAttribute = Compile.setAttribute,__createTextNode = Compile.createTextNode,
+        __setAttributeEx = Compile.setAttributeEx, __createElementEx = Compile.createElementEx,
+        __createTextNode = Compile.createTextNode, __setViewvar = Compile.setViewvar,
         __forRender = Compile.forRender, __ifRender = Compile.ifRender,
         __includeRender = Compile.includeRender;`);
 
@@ -1286,19 +1291,19 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         let names: string[];
         CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
             names = _makeSubName(attr.name);
-            outList.push('__setAttribute(element, "' + names[0] + '", "' + names[1] + '", ' + attr.bindInfo.content + ', componet, subject);');
+            outList.push('__setAttributeEx(element, "' + names[0] + '", "' + names[1] + '", ' + attr.bindInfo.content + ', componet, subject, isComponet);');
         });
     },
-    _buildAttrContentCP = function (attrs: Array<IAttrInfo>, outList: Array<string>) {
-        if (!attrs) return;
-        CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
-            if (attr.name == '$var') return;
-            if (attr.bind)
-                outList.push('__setAttributeCP(element, "' + attr.name + '", ' + attr.bindInfo.content + ', componet, subject);');
-            else
-                outList.push('__setAttributeCP(element, "' + attr.name + '", "' + _escapeBuildString(attr.value) + '", componet, subject);');
-        });
-    },
+    // _buildAttrContentCP = function (attrs: Array<IAttrInfo>, outList: Array<string>) {
+    //     if (!attrs) return;
+    //     CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
+    //         if (attr.name == '$var') return;
+    //         if (attr.bind)
+    //             outList.push('__setAttributeCP(element, "' + attr.name + '", ' + attr.bindInfo.content + ', componet, subject);');
+    //         else
+    //             outList.push('__setAttributeCP(element, "' + attr.name + '", "' + _escapeBuildString(attr.value) + '", componet, subject);');
+    //     });
+    // },
     _getViewvarName = function (attrs: Array<IAttrInfo>): { item: string, list: string } {
         let name = { item: null, list: null }, has = false;
         CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
@@ -1350,30 +1355,30 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         varName.item && varNameList.push(varName.item);
                         varName.list && varNameList.push(varName.list + ' = []');
                     }
-                    if (tag.componet) {
-                        if (hasChild || hasAttr || varName) {
-                            let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
-                            outList.push('__createComponet("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
-                            if (varName) {
-                                outList.push('__setViewvar(function(){');
-                                varName.item && outList.push(varName.item + ' = this;');
-                                varName.list && outList.push(varName.list + '.push(this);');
-                                varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
-                                varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
-                                outList.push('}, function(){');
-                                varName.item && outList.push(varName.item + ' = null;');
-                                varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject, true);');
-                            }
-                            _buildAttrContentCP(bindAttrs, outList);
-                            //createComponet下只能放tmpl
-                            _buildCompileFnContent(tag.children, outList, varNameList, preInsert, ['tmpl']);
-                            outList.push('});');
-                        } else {
-                            outList.push('__createComponet("' + tagName + '", [], componet, element, subject);');
-                        }
-                        preInsert = true;
-                    } else {
+                    // if (tag.componet) {
+                    //     if (hasChild || hasAttr || varName) {
+                    //         let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
+                    //         outList.push('__createComponet("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
+                    //         if (varName) {
+                    //             outList.push('__setViewvar(function(){');
+                    //             varName.item && outList.push(varName.item + ' = this;');
+                    //             varName.list && outList.push(varName.list + '.push(this);');
+                    //             varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
+                    //             varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
+                    //             outList.push('}, function(){');
+                    //             varName.item && outList.push(varName.item + ' = null;');
+                    //             varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
+                    //             outList.push('}, componet, element, subject, isComponet);');
+                    //         }
+                    //         _buildAttrContentCP(bindAttrs, outList);
+                    //         //createComponet下只能放tmpl
+                    //         _buildCompileFnContent(tag.children, outList, varNameList, preInsert, ['tmpl']);
+                    //         outList.push('});');
+                    //     } else {
+                    //         outList.push('__createComponetEx("' + tagName + '", [], componet, element, subject);');
+                    //     }
+                    //     preInsert = true;
+                    // } else {
                         let htmlTagDef: HtmlTagDef = tag.htmlTagDef,
                             rawTag = htmlTagDef.raw,
                             tagContent = rawTag && _getTagContent(tag);
@@ -1382,7 +1387,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         if (hasAttr || hasChild || varName) {
 
                             let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
-                            outList.push('__createElement("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject) {');
+                            outList.push('__createElementEx("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
                             if (varName) {
                                 outList.push('__setViewvar(function(){');
                                 varName.item && outList.push(varName.item + ' = this;');
@@ -1392,17 +1397,17 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 outList.push('}, function(){');
                                 varName.item && outList.push(varName.item + ' = null;');
                                 varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
-                                outList.push('}, componet, element, subject, false);');
+                                outList.push('}, componet, element, subject, isComponet);');
                             }
                             _buildAttrContent(bindAttrs, outList);
                             hasChild && _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
 
                             outList.push('}, "' + _escapeBuildString(tagContent) + '");');
                         } else {
-                            outList.push('__createElement("' + tagName + '", [], componet, element, subject, null, "' + _escapeBuildString(tagContent) + '");');
+                            outList.push('__createElementEx("' + tagName + '", [], componet, element, subject, null, "' + _escapeBuildString(tagContent) + '");');
                         }
                         preInsert = false;
-                    }
+                    // }
                 } else {
                     if (tag.bind) {
                         outList.push('__createTextNode(' + tag.bindInfo.content + ', componet, element, subject);');
