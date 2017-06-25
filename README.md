@@ -89,7 +89,7 @@ import FormComponet from './FormComponet';
     //模板内容
     tmpl:`<div class="app">
         <div class="app">{{this.name}}</div>
-        <fromtext />
+        <fromtest />
     </div>`,
     //模板Url,引用外部模板,相对于本ts文件路径，cmpx-loader编译用到
     tmplUrl:'tmpl1.thml',
@@ -112,6 +112,117 @@ export default class AppComponet extends Componet{
 
 
 }
+```
+
+### 绑定符 {{js表达式}}
+
+- 绑定符方向
+1. 只读：{{this.text + new Date().valueOf()}}
+2. 打印：{{: this.text}}，这个用于一次打印内容并不是绑定，提高性能，多用于for
+3. 只写：{{> this.text}}
+4. 读写：{{# this.text}}
+5. 事件：{{@ this.click(event,element)}}，可以传入event和element
+
+- 使用this.$update同步数据
+- 绑定符只能用于textNode和标签属性内容
+- 绑定符里的this都为对应的组件实例
+- 请看下面代码的注释说明
+
+```typescript
+import { Componet, VM } from "cmpx";
+import FormComponet from './FormComponet';
+
+@VM({
+    name:'app',
+    include:[ FormComponet ],
+    tmpl:`<div class="app">
+
+        <!--只绑定，$update后同步数据-->
+        你好，{{this.text}}
+
+        <!--打印，$update无效-->
+        你好，{{: this.text}}
+
+        <!--只写，input改变内容后，同步到this.text-->
+        <input type="text" value="{{> this.text}}" />
+
+        <!--读写，input改变内容后，同步到this.text，同样$update也会显示到input-->
+        <input type="text" model="{{# this.text}}" />
+
+        <!--事件-->
+        <button click="{{@ this.click(event, element)}}">点我</button>        
+
+        <!--读写，formtest的属性与this.text是双向两步的-->
+        <formtest text="{{# this.text}}" />
+
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    text = "hello world"
+
+    click(event, element) {
+        alert('click');
+    }
+
+    constructor(){
+        super();
+        
+        setTimeout(()=>{
+            //改变this.text
+            this.text += new Date().valueOf();
+            //使用$update同步数据
+            this.$update();
+        }, 1000);
+    }
+
+}
+```
+
+### 模板{{if}}语句
+
+```html
+<div class="app">
+    {{if this.index == 0}}
+        index:0
+    {{else this.index == 1}}
+        index:1
+    {{else}}
+        index:其它
+    {{/if}}
+</div>
+```
+
+### 模板{{for}}语句
+
+- 常用方式，这方式只要this.list的元素有变动(添加、删除等)，整个{{for}}内容重新显示
+
+```html
+<div class="app">
+    {{for item in this.list}}
+      index({{: $index}}): {{: item.name}}
+    {{/for}}
+</div>
+```
+
+- sync方式，这方式只要this.list的元素有变动(添加、删除等)，会同步性更新，现在有的元素节点不会给删除等
+
+```html
+<div class="app">
+    {{for item in this.list sync}}
+      index({{: $index}}): {{: item.name}}
+    {{/for}}
+</div>
+```
+
+- 自定义sync方式，请参考：[ForDemoComponetaaa](https://github.com/cmpxs/cmpx-demo/blob/master/src/expression/ForDemoComponet.ts)
+
+```html
+<div class="app">
+    {{for item in this.list sync="this.syncFn"}}
+      index({{: $index}}): {{: item.name}}
+    {{/for}}
+</div>
 ```
 
 ## 环境安装
