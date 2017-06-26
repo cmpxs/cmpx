@@ -545,7 +545,7 @@ export class CompileSubject {
 
 
 let _tmplName = '__tmpl__',
-    _getComponetTmpl = function (componet: Componet, id: string): any {
+    _getComponetTmpl = function (componet: Componet, id: string): (componet: Componet, element: HTMLElement, subject: CompileSubject, param: any)=>CompileSubject {
         let tmpls = componet[_tmplName];
         if (!tmpls || !tmpls[id])
             return componet.$parent ? _getComponetTmpl(componet.$parent, id) : null;
@@ -631,7 +631,7 @@ export class CompileRender {
     complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: Function): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
-        subject || (subject = (parentComponet ? parentComponet.$subObject : null));
+        subject || (subject = (parentComponet ? parentComponet.$subject : null));
         subjectExclude || (subjectExclude = {});
         //subjectExclude.remove = true;
 
@@ -643,7 +643,7 @@ export class CompileRender {
             isNewComponet = true;
             componet = new componetDef();
             componet.$name = name;
-            componet.$subObject = newSubject;
+            componet.$subject = newSubject;
             componet.$parentElement = parentElement;
             componet.$parent = parentComponet;
 
@@ -690,7 +690,7 @@ export class CompileRender {
                             (idx >= 0) && childs.splice(idx, 1);
                         }
 
-                        componet.$subObject = componet.$children = //componet.$elements =
+                        componet.$subject = componet.$children = //componet.$elements =
                             componet.$parent = componet.$parentElement = null;
                     }
                 }
@@ -872,14 +872,14 @@ export class Compile {
                             writeFn(p);
                         }
                     },
-                    pSubP:ISubscribeParam = isWrite || isRead ? parent.$subObject.subscribe({
+                    pSubP:ISubscribeParam = isWrite || isRead ? parent.$subject.subscribe({
                         update:updateFn
                     }) : null;
                 let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
                 subject.subscribe({
                     update: updateFn,
                     remove:function(){
-                        pSubP && parent.$subObject && parent.$subObject.unSubscribe(pSubP);
+                        pSubP && parent.$subject && parent.$subject.unSubscribe(pSubP);
                     }
                 });
             }
@@ -1201,11 +1201,13 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        var tmpls = componet[_tmplName];
+        let tmpls = componet[_tmplName],
+            $componet = componet, $subject = subject;
         tmpls || (tmpls = componet[_tmplName] = {});
 
         tmpls[id] = function (componet: Componet, element: HTMLElement, subject: CompileSubject, param: any) {
-            contextFn && contextFn.call(componet, componet, element, subject, param);
+            contextFn && contextFn.call($componet, $componet, element, subject, param);
+            return $componet == componet ? null : $componet.$subject;
         };
     }
 
@@ -1215,13 +1217,24 @@ export class Compile {
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
             if (tmpl){
-                let pTmep = param.call(componet) || {};
+                let pTmep = param.call(componet) || {},
+                    subsP:ISubscribeParam;
+                subject = new CompileSubject(subject);
                 subject.subscribe({
                     update:function(){
                         CmpxLib.extend(pTmep,  param.call(componet));
+                    },
+                    remove:function(){
+                        subsP && subs.unSubscribe(subsP);
                     }
                 });
-                tmpl.call(componet, componet, parentElement, subject, pTmep);
+                let subs = tmpl(componet, parentElement, subject, pTmep);
+                //如果tmpl在不同的component, 将this为当前域，夸域处理
+                subs && (subsP = subs.subscribe({
+                    update:function(p:ISubscribeEvent){
+                        subject.update(p);
+                    }
+                }));
             }
         } else {
             let render: CompileRender,
@@ -1281,7 +1294,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         __setAttributeEx = Compile.setAttributeEx, __createElementEx = Compile.createElementEx,
         __createTextNode = Compile.createTextNode, __setViewvar = Compile.setViewvar,
         __forRender = Compile.forRender, __ifRender = Compile.ifRender,
-        __includeRender = Compile.includeRender, __updateRender = Compile.updateRender;`);
+        __includeRender = Compile.includeRender, __updateRender = Compile.updateRender,
+        __componet = componet;`);
 
         return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
     },
@@ -1465,7 +1479,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         let tmplAttr = CmpxLib.arrayToObject<IAttrInfo>(tag.attrs, 'name'),
                             tmplId = tmplAttr['id'],
                             tmplLet = tmplAttr['let'];
-                        outList.push('__tmplRender("' + (tmplId ? _escapeBuildString(tmplId.value) : '') + '", componet, element, subject, function (componet, element, subject, param) {');
+                        outList.push('__tmplRender("' + (tmplId ? _escapeBuildString(tmplId.value) : '') + '", __componet, element, subject, function (componet, element, subject, param) {');
                         tmplLet && outList.push('var ' + tmplLet.value + ';');
                         tmplLet && outList.push('__updateRender(function(){' + tmplLet.value + '}, componet, element, subject);');
                         _buildCompileFnContent(tag.children, outList, varNameList, preInsert);

@@ -4,7 +4,7 @@ export class Componet {
     readonly $name: string;
     readonly $parent: Componet;
     readonly $children: Array<Componet> = [];
-    readonly $subObject: CompileSubject;
+    readonly $subject: CompileSubject;
     //readonly $elements: Array<HTMLElement | Text> = [];
     readonly $parentElement: HTMLElement;
 
@@ -16,7 +16,7 @@ export class Componet {
         if (this.$isDisposed) return;
         this.onUpdateBefore(() => {
             if (this.$isDisposed) return;
-            this.$subObject.update({
+            this.$subject.update({
                 componet: this,
                 param: p
             });
