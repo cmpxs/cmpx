@@ -20,8 +20,8 @@ export class Componet {
                 componet: this,
                 param: p
             });
+            this.onUpdate(function(){}, p);
         }, p);
-        this.onUpdate(function(){}, p);
     }
 
     private updateId:any;

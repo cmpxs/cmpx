@@ -717,14 +717,21 @@ export class CompileRender {
         },
         readyFn = function () {
             _insertAfter(fragment, refNode, _getParentElement(refNode));
-            isNewComponet && componet.onReady(function () { }, null);
-            newSubject.ready({
-                componet: componet
-            });
-            //reay后再次补发update
-            newSubject.update({
-                componet: componet
-            });
+            let readyEnd = function(){
+                newSubject.ready({
+                    componet: componet
+                });
+                //reay后再次补发update
+                newSubject.update({
+                    componet: componet
+                });
+            };
+            if (isNewComponet)
+                componet.onReady(function () {
+                    readyEnd();
+                }, null);
+            else
+                readyEnd();
         };
         if (isNewComponet) {
             componet.onInit(function (err) {
