@@ -1239,7 +1239,7 @@ export class Compile {
             },
             remove: function (p: ISubscribeEvent) {
                 removeFn();
-                newSubject = childNodes = refNode = null;
+                newSubject = childNodes = refNode = detachFr = null;
             }
         });
     }
@@ -1363,7 +1363,8 @@ export class Compile {
             },
             remove: function (p: ISubscribeEvent) {
                 removeFn();
-                newSubject = childNodes = refNode = null;
+                newSubject = childNodes = refNode
+                    = falseNodes = trueNodes = falseSubject = trueSubject = null;
             }
         });
 
