@@ -462,6 +462,7 @@ export class CompileSubject {
             p.update && this.subscribeIn('update', p);
             p.ready && this.subscribeIn('ready', p);
             p.remove && this.subscribeIn('remove', p);
+            p.detach && this.subscribeIn('detach', p);
             if (this.ready)
                 p.ready && p.ready(null);
             else
@@ -548,6 +549,7 @@ export class CompileSubject {
      */
     detach(p: ISubscribeEvent) {
         if (this.isRemove) return;
+        this.isDetach = !this.isDetach;
         CmpxLib.each(this.detachList, function (fn:any) {
             fn && fn(p);
         });
@@ -652,7 +654,7 @@ let _tmplName = '__tmpl__',
     },
     _detachElement = function(nodes:Node[]){
         if (nodes && nodes.length > 0){
-            let pNode:Node = _getParentElement(nodes[0]),
+            let //pNode:Node = _getParentElement(nodes[0]),
                 fragment = document.createDocumentFragment();
             CmpxLib.each(nodes, function(item){
                 fragment.appendChild(item);
@@ -768,7 +770,16 @@ export class CompileRender {
                 componet: componet
             });
             fragment = document.createDocumentFragment();
+            let detachFr:DocumentFragment;
             subject && subject.subscribe({
+                detach:function(){
+                    if (subject.isDetach)
+                        detachFr = _detachElement(childNodes);
+                    else {
+                        _insertAfter(detachFr, refNode, _getParentElement(refNode));
+                        detachFr = null;
+                    }
+                },
                 remove: function (p: ISubscribeEvent) {
                     fragment = refNode = componet = parentElement = parentComponet = null;
                 }
@@ -1065,8 +1076,30 @@ export class Compile {
             syncDatas:any[],
             removeFn = function () {
                 childNodes = _removeChildNodes(childNodes);
-            };
+            },
+            detachFr:DocumentFragment;
         subject.subscribe({
+            detach:function(){
+                if (syncFn){
+                    if (subject.isDetach){
+                        let nodes = [];
+                        CmpxLib.each(syncDatas, function(item){
+                            nodes = nodes.concat(item.nodes);
+                        });
+                        detachFr = _detachElement(nodes);
+                        nodes = null;
+                    } else {
+                        detachFr && _insertAfter(detachFr, refNode, _getParentElement(refNode));
+                    }
+                } else {
+                    if (subject.isDetach){
+                        detachFr = _detachElement(childNodes);
+                    } else {
+                        detachFr && _insertAfter(detachFr, refNode, _getParentElement(refNode));
+                        detachFr = null;
+                    }
+                }
+            },
             update: function (p: ISubscribeEvent) {
                 let datas = dataFn.call(componet, componet, parentElement, subject);
                 if (!_equalArray(datas, value)) {
@@ -1228,37 +1261,104 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        var refNode = _getRefNode(parentElement);
+        let refNode = _getRefNode(parentElement),
+            value, newSubject: CompileSubject,
+            childNodes: Node[], removeFn = function () {
+               isX || (childNodes = _removeChildNodes(childNodes));
+            };
+        let fragment:DocumentFragment;
 
-        var value, newSubject: CompileSubject;
-        var childNodes: Node[], removeFn = function () {
-            childNodes = _removeChildNodes(childNodes);
-        };
+        let trueFragment:DocumentFragment, trueSubject:CompileSubject, trueNodes:Node[],
+            falseFragment:DocumentFragment, falseSubject:CompileSubject, falseNodes:Node[]
         subject.subscribe({
+            detach:function(){
+                if (isX){
+                    if (subject.isDetach){
+                        fragment = _detachElement(value ? trueNodes : falseNodes);
+                    } else {
+                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        fragment = null;
+                    }
+                } else{
+                    if (subject.isDetach){
+                        fragment = _detachElement(childNodes);
+                    } else {
+                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        fragment = null;
+                    }
+                }
+            },
             update: function (p: ISubscribeEvent) {
                 let newValue = !!ifFun.call(componet, componet, parentElement, subject);
 
                 if (newValue != value) {
                     value = newValue;
 
-                    removeFn();
-                    newSubject && newSubject.remove({
-                        componet: componet
-                    });
+                    if (isX){
+                        if (newValue) {
+                            falseNodes && (falseFragment = _detachElement(falseNodes));
+                            falseSubject && falseSubject.detach({
+                                componet:componet
+                            });
+                            if (trueFragment){
+                                fragment = trueFragment;
+                                trueSubject.detach({
+                                    componet:componet
+                                });
+                            }
+                            else {
+                                trueSubject = new CompileSubject(subject);
+                                fragment = document.createDocumentFragment();
+                                trueFn.call(componet, componet, fragment, trueSubject);
+                                trueNodes = CmpxLib.toArray(fragment.childNodes);
+                            }
+                            newSubject = trueSubject;
+                        }
+                        else {
+                            trueNodes && (trueFragment = _detachElement(trueNodes));
+                            trueSubject && trueSubject.detach({
+                                componet:componet
+                            });
+                            if (falseFragment){
+                                fragment = falseFragment;
+                                falseSubject.detach({
+                                    componet:componet
+                                });
+                            }
+                            else {
+                                falseSubject = new CompileSubject(subject);
+                                fragment = document.createDocumentFragment();
+                                falseFn.call(componet, componet, fragment, falseSubject);
+                                falseNodes = CmpxLib.toArray(fragment.childNodes);
+                            }
+                            newSubject = falseSubject;
+                        }
+                        newSubject.update({
+                            componet: componet
+                        });
+                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        fragment = null;
+                    } else {
 
-                    newSubject = new CompileSubject(subject);
+                        removeFn();
+                        newSubject && newSubject.remove({
+                            componet: componet
+                        });
 
-                    let fragment = document.createDocumentFragment();
-                    if (newValue)
-                        trueFn.call(componet, componet, fragment, newSubject);
-                    else
-                        falseFn.call(componet, componet, fragment, newSubject);
-                    childNodes = CmpxLib.toArray(fragment.childNodes);
-                    newSubject.update({
-                        componet: componet
-                    });
-                    _insertAfter(fragment, refNode, _getParentElement(refNode));
-                    fragment = null;
+                        newSubject = new CompileSubject(subject);
+
+                        fragment = document.createDocumentFragment();
+                        if (newValue)
+                            trueFn.call(componet, componet, fragment, newSubject);
+                        else
+                            falseFn.call(componet, componet, fragment, newSubject);
+                        childNodes = CmpxLib.toArray(fragment.childNodes);
+                        newSubject.update({
+                            componet: componet
+                        });
+                        _insertAfter(fragment, refNode, _getParentElement(refNode));
+                        fragment = null;
+                    }
                 }
             },
             remove: function (p: ISubscribeEvent) {
