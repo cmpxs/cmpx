@@ -14,21 +14,18 @@ class TestCP1 extends Componet{
 var tmpl = `
 <div>
 
-{{ifx this.ok}}
-  ifxok
-{{else this.aaa}}
-  aaaOk
-{{else}}
-  ifxfalse
-  {{if this.okif}}
-    testok
-  {{else this.FFF}}
-    fffok
-  {{else}}
-     test else
-  {{/if}}
-{{/ifx}}
-  
+{{for item in list}}
+  fortext
+{{/for}}
+
+{{for item in list sync}}
+  fortext
+{{/for}}
+
+{{forx item in list sync="this.sync"}}
+  fortext
+{{/forx}}
+
 </div>  
 `;
 

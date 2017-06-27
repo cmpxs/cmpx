@@ -73,7 +73,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         return encodeURIComponent(s).replace(/'/g, '%27');
     },
     //将{{this.name}}绑定标签转成$($this.name$)$
-    _cmdEncodeAttrRegex = /\{\{\{((?:.|\r|\n)*?)\}\}\}|\{\{((?!\/|\s*(?:if|ifx|else|for|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
+    _cmdEncodeAttrRegex = /\{\{\{((?:.|\r|\n)*?)\}\}\}|\{\{((?!\/|\s*(?:if|ifx|else|for|forx|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
     _makeTextTag = function (tmpl: string): string {
         //
         return tmpl.replace(_cmdEncodeAttrRegex, function (find, content, content1) {
@@ -114,6 +114,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                     if ((single || !end)) {
                         switch (txtName) {
                             case 'for':
+                            case 'forx':
                                 attrs = _getForAttrInfos(txtContent);
                                 break;
                             case 'tmpl':
@@ -1495,7 +1496,9 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
             } else {
                 switch (tagName) {
                     case 'for':
-                        var extend = tag.attrs[0].extend,
+                    case 'forx':
+                        let isForX = (tagName=='forx'),
+                            extend = tag.attrs[0].extend,
                             itemName = extend.item,
                             fSync = extend.sync
                         outList.push('__forRender(function (componet, element, subject) {');
@@ -1510,7 +1513,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         outList.push('return setForVar;');
 
                         let fSyFn = 'null';
-                        if (extend.sync){arguments
+                        if (isForX || extend.sync){
                             let syncCT = extend.syncCT;
                             //function(item, count, index, newList)=>返回index表示已存在的位置，-1表示不存在;
                             fSyFn = syncCT ? 'function(){ var fn = '+syncCT+'; return fn ? fn.apply(this, arguments) : -1; }'
