@@ -73,7 +73,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         return encodeURIComponent(s).replace(/'/g, '%27');
     },
     //将{{this.name}}绑定标签转成$($this.name$)$
-    _cmdEncodeAttrRegex = /\{\{\{((?:.|\r|\n)*?)\}\}\}|\{\{((?!\/|\s*(?:if|else|for|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
+    _cmdEncodeAttrRegex = /\{\{\{((?:.|\r|\n)*?)\}\}\}|\{\{((?!\/|\s*(?:if|ifx|else|for|tmpl|include|html)[ \}])(?:.|\r|\n)+?)\}\}/gm,
     _makeTextTag = function (tmpl: string): string {
         //
         return tmpl.replace(_cmdEncodeAttrRegex, function (find, content, content1) {
@@ -1211,7 +1211,7 @@ export class Compile {
         ifFun: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         trueFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         falseFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
-        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject
+        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, isX:boolean
     ): void {
 
         if (subject.isRemove) return;
@@ -1510,7 +1510,8 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         preInsert = true;
                         break;
                     case 'if':
-                        let ifFn = function (ifTag) {
+                    case 'ifx':
+                        let isX = (tagName=='ifx'), ifFn = function (ifTag) {
                             let ifChild = ifTag.children,
                                 hasElse = ifChild ? ifChild[ifChild.length - 1].tagName == 'else' : false,
                                 elseTag = hasElse ? ifChild.pop() : null;
@@ -1523,7 +1524,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 ifFn(elseTag);
                                 //_buildCompileFnContent(elseTag.children, outList, varNameList, preInsert);
                             }
-                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject);');
+                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, '+(isX?'true':'false')+');');
                         };
                         ifFn(tag);
 
