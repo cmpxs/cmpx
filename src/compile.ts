@@ -517,7 +517,6 @@ export class CompileSubject {
         if (this.isRemove) return;
         var list = this.readyList;
         this.readyList = [];
-        list && list.reverse();
         CmpxLib.each(list, function (fn:any) {
             fn && fn(p);
         });
@@ -633,7 +632,7 @@ export class CompileRender {
 
         subject || (subject = (parentComponet ? parentComponet.$subject : null));
         subjectExclude || (subjectExclude = {});
-        //subjectExclude.remove = true;
+        subjectExclude.ready = true;
 
         let componet: any,
             isNewComponet: boolean = false,
