@@ -648,6 +648,17 @@ let _tmplName = '__tmpl__',
             });
         }
         return null;
+    },
+    _detachElement = function(nodes:Node[]){
+        if (nodes && nodes.length > 0){
+            let pNode:Node = _getParentElement(nodes[0]),
+                fragment = document.createDocumentFragment();
+            CmpxLib.each(nodes, function(item){
+                fragment.appendChild(item);
+            });
+            return fragment;
+        }
+        return null;
     };
 
 export class CompileRender {
