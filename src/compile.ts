@@ -545,7 +545,7 @@ export class CompileSubject {
 
 
 let _tmplName = '__tmpl__',
-    _getComponetTmpl = function (componet: Componet, id: string): (componet: Componet, element: HTMLElement, subject: CompileSubject, param: any)=>CompileSubject {
+    _getComponetTmpl = function (componet: Componet, id: string): any {
         let tmpls = componet[_tmplName];
         if (!tmpls || !tmpls[id])
             return componet.$parent ? _getComponetTmpl(componet.$parent, id) : null;
@@ -1202,12 +1202,26 @@ export class Compile {
         if (subject.isRemove) return;
 
         let tmpls = componet[_tmplName],
-            $componet = componet, $subject = subject;
+            $componet = componet;
         tmpls || (tmpls = componet[_tmplName] = {});
 
         tmpls[id] = function (componet: Componet, element: HTMLElement, subject: CompileSubject, param: any) {
+            if ($componet != componet){
+                //如果tmpl在不同的component, 将this为当前域，夸域处理
+                subject = new CompileSubject(subject);
+                let pSubject = $componet.$subject,
+                    subsP:ISubscribeParam = pSubject.subscribe({
+                        update:function(p:ISubscribeEvent){
+                            subject.update(p);
+                        }
+                    });
+                subject.subscribe({
+                    remove:function(){
+                        subsP && pSubject.unSubscribe(subsP);
+                    }
+                });
+            }
             contextFn && contextFn.call($componet, $componet, element, subject, param);
-            return $componet == componet ? null : $componet.$subject;
         };
     }
 
@@ -1217,24 +1231,13 @@ export class Compile {
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
             if (tmpl){
-                let pTmep = param.call(componet) || {},
-                    subsP:ISubscribeParam;
-                subject = new CompileSubject(subject);
+                let pTmep = param.call(componet) || {};
                 subject.subscribe({
                     update:function(){
                         CmpxLib.extend(pTmep,  param.call(componet));
-                    },
-                    remove:function(){
-                        subsP && subs.unSubscribe(subsP);
                     }
                 });
-                let subs = tmpl(componet, parentElement, subject, pTmep);
-                //如果tmpl在不同的component, 将this为当前域，夸域处理
-                subs && (subsP = subs.subscribe({
-                    update:function(p:ISubscribeEvent){
-                        subject.update(p);
-                    }
-                }));
+                tmpl(componet, parentElement, subject, pTmep);
             }
         } else {
             let render: CompileRender,
