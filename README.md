@@ -15,7 +15,7 @@ Cmpx是全完基于typesctipt语言编写的较底层MV绑定核心库，并没�
 
 - 以下所有代码都摘取：[https://github.com/cmpxs/cmpx-demo](https://github.com/cmpxs/cmpx-demo)
 - 演示地址：[https://cmpxs.github.io/cmpx-demo/](https://cmpxs.github.io/cmpx-demo/)
-- 以上cmpx-demo里是一个很好开发环境，里面基于webpack搭建并提供了cmpx-loader负责编译模板等
+- cmpx-demo是一个开始环境，里面基于webpack搭建并提供了cmpx-loader负责编译模板等
 
 
 ### 启动
@@ -74,7 +74,9 @@ new Browser().boot(AppComponet);
 
 ```
 
-### 修释符VM参数
+### 修释符@VM
+
+- 修释符@VM主要用于配置组件的模板、样式等；以下是它的配置项说明：
 
 ```typescript
 
@@ -181,21 +183,39 @@ export default class AppComponet extends Componet{
 
 ### 模板{{if}}语句
 
+- {{if}}语句用于控制模板显示分支
+
 ```html
 <div class="app">
     {{if this.index == 0}}
-        index:0
+       <span>index:0</span>
     {{else this.index == 1}}
-        index:1
+       <span>index:1</span>
     {{else}}
-        index:其它
+       <span>index:其它</span>
     {{/if}}
+</div>
+```
+
+### 模板{{ifx}}语句
+
+- 与{{if}}作用是一样，不同在于不会删除内容，而是暂时与View分离
+
+```html
+<div class="app">
+    {{ifx this.index == 0}}
+       <span>index:0</span>
+    {{else this.index == 1}}
+       <span>index:1</span>
+    {{else}}
+       <span>index:其它</span>
+    {{/ifx}}
 </div>
 ```
 
 ### 模板{{for}}语句
 
-- 常用方式，这方式只要this.list的元素有变动(添加、删除等)，整个{{for}}内容重新显示
+- 常用方式，这方式只要this.list的元素有变动(添加、删除等)，整个{{for}}内容重新构建
 
 ```html
 <div class="app">
@@ -205,13 +225,15 @@ export default class AppComponet extends Componet{
 </div>
 ```
 
+### 模板{{forx}}语句
+
 - sync方式，这方式只要this.list的元素有变动(添加、删除等)，会同步性更新，现在有的元素节点不会给删除等
 
 ```html
 <div class="app">
-    {{for item in this.list sync}}
+    {{forx item in this.list sync}}
       index({{: $index}}): {{: item.name}}
-    {{/for}}
+    {{/forx}}
 </div>
 ```
 
@@ -219,9 +241,96 @@ export default class AppComponet extends Componet{
 
 ```html
 <div class="app">
-    {{for item in this.list sync="this.syncFn"}}
+    {{forx item in this.list sync="this.syncFn"}}
       index({{: $index}}): {{: item.name}}
-    {{/for}}
+    {{/forx}}
+</div>
+```
+
+### 模板{{tmpl}}语句
+
+- {{tmpl}}用于定义一个模板
+
+```html
+<div class="app">
+    <!--定义id为tmpl1模板，将给include用-->
+    {{tmpl id="tmpl1"}}
+    <span>index:1</span>
+    {{/tmpl}}
+</div>
+```
+
+### 模板{{include}}语句
+
+#### 引用{{tmpl}}模板
+
+- 引用{{tmpl}}模板
+
+```html
+<div class="app">
+    <!--定义id为tmpl1模板，将给include用-->
+    {{tmpl id="tmpl1"}}
+    <span>index:1</span>
+    {{/tmpl}}
+
+    <div>
+        <!--引用tmpl1模板， 注意：如果本组件没有定义tmpl1模板，include会向所有父级组件查找模板-->
+        {{include tmpl="tmpl1" /}}
+    </div>
+</div>
+```
+
+- 引用{{tmpl}}模板，并传送参数
+
+```html
+<div class="app">
+    <!--定义id为tmpl1模板，设置参数index和coude-->
+    {{tmpl id="tmpl1" let="index=param.index,count=param.count"}}
+     <span>index:{{index}} {{param.index}}</span>
+    {{/tmpl}}
+
+    <div>
+        {{for item in this.list}}
+        <!--引用tmpl1模板， 传送index和count-->
+            {{include tmpl="tmpl1" param="{index:$index, count:$count}" /}}
+        {{/for}}
+    </div>
+</div>
+```
+
+- 引用render模板（动态引用模板），并传送参数
+
+```html
+<div class="app">
+    <!--定义id为tmpl1模板，设置参数index和coude-->
+
+    <div>
+        {{for item in this.list}}
+        <!--引用tmpl1模板， 传送index和count-->
+            {{include render="this.render1" param="{index:$index}" /}}
+        {{/for}}
+    </div>
+</div>
+```
+
+```typescript
+export default class AppComponet extends Componet{
+
+    render1 = this.$render(`<span>index:{{param.index}}</span>`);
+
+}
+```
+
+- include默认内容模板
+
+```html
+<div class="app">
+    <div>
+        {{include tmpl="tmpl1"}}
+            <!--如果没有定义tmpl1模板，使用这里的内容-->
+            <span>include内容</span>
+        {{/include}}
+    </div>
 </div>
 ```
 
