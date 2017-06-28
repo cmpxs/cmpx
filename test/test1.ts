@@ -14,18 +14,17 @@ class TestCP1 extends Componet{
 var tmpl = `
 <div>
 
-{{for item in list}}
-  fortext
-{{/for}}
+{{tmpl id="tmpl1"}}
+  dsfsf
+{{/tmpl}}
 
-{{for item in list sync}}
-  fortext
-{{/for}}
+{{include tmpl="tmpl1" /}}
 
-{{forx item in list sync="this.sync"}}
-  fortext
-{{/forx}}
-
+{{include tmpl="tmpl1"}}
+  sdfsfdsdf
+{{/include}}
+<input></input>
+{{for item in this.list}}fortext{{/for}}
 </div>  
 `;
 

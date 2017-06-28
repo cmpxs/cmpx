@@ -104,10 +104,10 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
 
             var cmd = !!txtName,
                 htmlTagDef = cmd ? null : HtmlDef.getHtmlTagDef(tagName),
-                single = !!end2 || !!txtEnd2 || (cmd ? _singleCmd[txtName] : htmlTagDef.single),
+                single = !!end2 || !!txtEnd2 || (cmd ? (_singleCmd[txtName] && !!txtEnd2) : htmlTagDef.single),
                 end = !!end1 || !!txtEnd1 || single;
 
-            if (cmd || !(single && !!end1)) {
+            if (!(single && (!!end1 || !!txtEnd1))) {
 
                 var attrs = !cmd && !!tagContent ? _getAttrInfos(tagContent) : null;
                 if (cmd) {
@@ -137,8 +137,8 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                     end: end,
                     single: single,
                     index: index,
-                    htmlTagDef: htmlTagDef,
-                    componet: cmd ? false : !!_registerVM[tagName]
+                    htmlTagDef: htmlTagDef//,
+                    //componet: cmd ? false : !!_registerVM[tagName]
                 };
                 list.push(item);
             }
@@ -773,9 +773,12 @@ export class CompileRender {
             let detachFr:DocumentFragment;
             subject && subject.subscribe({
                 detach:function(){
+                    if (componet.$isDisposed) return;
                     if (subject.isDetach)
                         detachFr = _detachElement(childNodes);
                     else {
+                        if (isNewComponet)
+                            newSubject.update({componet:componet});
                         _insertAfter(detachFr, refNode, _getParentElement(refNode));
                         detachFr = null;
                     }
@@ -1399,19 +1402,23 @@ export class Compile {
         };
     }
 
-    public static includeRender(context: any, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
+    public static includeRender(context: any, contextFn:Function, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
         if (!context || subject.isRemove) return;
 
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
             if (tmpl){
-                let pTmep = param.call(componet) || {};
-                subject.subscribe({
+                let pTmep = (param && param.call(componet)) || {};
+                param && subject.subscribe({
                     update:function(){
                         CmpxLib.extend(pTmep,  param.call(componet));
                     }
                 });
-                tmpl(componet, parentElement, subject, pTmep);
+                if (tmpl)
+                    tmpl(componet, parentElement, subject, pTmep);
+                else if (contextFn){
+                    contextFn.call(componet, componet, parentElement, subject, pTmep);
+                }
             }
         } else {
             let render: CompileRender,
@@ -1649,11 +1656,20 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         let incAttr = CmpxLib.arrayToObject<IAttrInfo>(tag.attrs, 'name'),
                             incTmpl = incAttr['tmpl'],
                             incParam = incAttr['param'] ? incAttr['param'].value : 'null',
-                            incRender: any = incAttr['render'];
+                            incRender: any = incAttr['render'],
+                            hasIncChild: boolean = tag.children && tag.children.length > 0;
+                        incParam = incParam == 'null' ? incParam : ('function(){ return ' + incParam + ';}');
                         incRender && (incRender = 'function(){ return ' + incRender.value + '}');
                         let context = incRender ? incRender : ('"' + (incTmpl ? _escapeBuildString(incTmpl.value) : '') + '"');
-                        outList.push('__includeRender(' + context + ', componet, element, ' + _getInsertTemp(preInsert) + ', subject, function(){ return ' + incParam + ';});');
+
+                        if (hasIncChild){
+                            outList.push('__includeRender(' + context + ', function (componet, element, subject) {');
+                            _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
+                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject,  ' + incParam + ');');
+                        } else
+                            outList.push('__includeRender(' + context + ', null, componet, element, ' + _getInsertTemp(preInsert) + ', subject,  ' + incParam + ');');
                         preInsert = true;
+
                         break;
                     case 'tmpl':
                         let tmplAttr = CmpxLib.arrayToObject<IAttrInfo>(tag.attrs, 'name'),
