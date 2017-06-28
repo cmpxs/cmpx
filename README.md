@@ -262,8 +262,6 @@ export default class AppComponet extends Componet{
 
 ### 模板{{include}}语句
 
-#### 引用{{tmpl}}模板
-
 - 引用{{tmpl}}模板
 
 ```html
@@ -332,6 +330,66 @@ export default class AppComponet extends Componet{
         {{/include}}
     </div>
 </div>
+```
+
+### 模板变量$var与$array
+
+- 定义模板变量与使用
+
+```html
+<div class="app">
+    <div>
+        <!--定义输入框为input1-->
+        <input type="text" $var="input1" />
+
+        <!--使用input1, 注意：必须先定义后使用-->
+        {{inpu1.value}}
+
+        <!--定义组件为user1-->
+        <user $var="user1" />
+        {{user1.text}}
+    </div>
+    <div>
+        {{for item in this.list}}
+            <!--定义divList数组-->
+            <div $array="divList">{{$index}}</div>
+        {{/for}}
+        <!--使用divList-->
+        {{divList[0].innerText}}
+    </div>
+</div>
+```
+
+- 在类里引用模板变量，注意：要在onReady后才用使用
+
+```typescript
+export default class AppComponet extends Componet{
+    //引用模板变量input1
+    @viewvar()
+    input1:HTMLElement;
+
+    //引用模板变量input1
+    @viewvar('input1')
+    inputEle:HTMLElement;
+
+    //引用组件变量user1, 实现组件间访问
+    @viewvar()
+    user1:userComponet;
+
+    //引用模板变量divList
+    @viewvar()
+    divList:HTMLElement[];
+
+    click(){
+        alert(this.input1.value);
+    }
+
+    onReady(cb){
+        this.input1.value
+        super.onReady(cb);
+    }
+
+}
 ```
 
 ## 环境安装
