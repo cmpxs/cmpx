@@ -1,7 +1,7 @@
 
 ## 概述
 
-Cmpx是全完基于typesctipt语言编写的较底层MV绑定核心库，并没有完整的架构层，所以目前非常合适轻量的应用场景；但基于它，你可以很容易根据自己场景编写出架构层，起码绑定方面已经不用考虑，专心实现合适自己场景的架构，这也是编写Cmpx的目的。
+Cmpx是全完基于typesctipt语言编写的较底层MV绑定核心框架，并没有完整的架构层，所以目前非常合适轻量的应用场景；但基于它，你可以很容易根据自己场景编写出架构层级的框架，起码绑定方面已经不用考虑，专心实现合适自己场景的架构，这也是编写Cmpx的目的。
 
 ## 特点
 
@@ -9,7 +9,7 @@ Cmpx是全完基于typesctipt语言编写的较底层MV绑定核心库，并没�
 - 运行效率高，将模板直接编译成可执行的JS；
 - 与平台无关，底层只负责将模板编译成JS和同步数据机制，各平台可以自行配置并应用，如：IE8等。但自带的[Browser](https://github.com/cmpxs/cmpx/blob/master/src/browser.ts)只是支持只支持IE9及以上，可以参考它来配置；
 
-## 使用说明
+## 启动例子
 
 ### 代码与演示
 
@@ -74,6 +74,8 @@ new Browser().boot(AppComponet);
 
 ```
 
+## 组件
+
 ### 修释符@VM
 
 - 修释符@VM主要用于配置组件的模板、样式等；以下是它的配置项说明：
@@ -115,6 +117,93 @@ export default class AppComponet extends Componet{
 
 }
 ```
+
+### 组件方法
+
+- $update：Cmpx不支持自动同步View数据，必须手动调用$update来同步View数据，但可以基于它来实现自动同步，比如加上自己一层基类来扩展这一特性；
+- $updateAsync：与$update一样，延后同步数据，如果多个会合并为一个；
+- $render：定义一个动态模板，并使用{{inlude}}加载
+
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'app',
+    tmpl:`<div class="app">
+        {{this.text}}
+        {{includ render="this.render1" /}}
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    text = "hello world"
+
+    render1 = this.$render(`<div>{{this.text}}</div>`);
+
+    constructor(){
+        super();
+        
+        setTimeout(()=>{
+            //改变this.text
+            this.text += new Date().valueOf();
+            //使用$update同步数据
+            this.$update();
+        }, 1000);
+    }
+
+}
+```
+
+### 组件事件
+
+- onInit(cb)：初始化时触发，如：准备数据；此时还没开始解释模板内容；
+- onReady(cb)：View已经准备好时触发，如：可以后准备数据；此时可以访问View的所有内容；
+- onUpdateBefore(cb)：调用this.$update并同步View数据前触发；
+- onUpdate(cb)：调用this.$update并同步View数据后触发；
+- onDispose()：销毁组件时触发；
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'app',
+    tmpl:`<div class="app">
+        {{this.text}}
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    text = "hello world"
+
+    onInit(cb){
+        console.log('onInit');
+        setTimeout(()=>{
+            this.text += new Date().valueOf();
+            //表示处理完成
+            super.onInit(cb);
+        }, 1000);
+    }
+
+    onReady(cb){
+        console.log('onReady');
+        super.onReady(cb);
+    }
+
+    onUpdate(cb){
+        console.log('onUpdate');
+        super.onUpdate(cb);
+    }
+
+    onDispose(){
+        super.onDispose();
+        console.log('onDispose');
+    }
+
+}
+```
+
+## 模板语法&语句
 
 ### 绑定符 {{js表达式}}
 
@@ -183,7 +272,7 @@ export default class AppComponet extends Componet{
 
 ### 模板{{if}}语句
 
-- {{if}}语句用于控制模板显示分支
+- {{if}}语句用于控制View的显示分支
 
 ```html
 <div class="app">
@@ -217,21 +306,36 @@ export default class AppComponet extends Componet{
 
 - 常用方式，这方式只要this.list的元素有变动(添加、删除等)，整个{{for}}内容重新构建
 
+#### {{for}} 内部变量
+
+- $index（项名称_index）：当前的index
+- $count（项名称_count）：数据的长度
+- $last（项名称_last）：是否第一项
+- $first（项名称_first）：是否最后项
+- $odd（项名称_odd）：是否奇数项
+- $even（项名称_even）：是否偶数项
+
 ```html
 <div class="app">
     {{for item in this.list}}
       index({{: $index}}): {{: item.name}}
+      index({{: item_index}}): {{: item.name}}
+      {{for user in item.children}}
+        <!--使用（项名称_index）来读取上层for的index-->
+        list index:{{: item_index}}
+        user index:{{: user_index}} | {{: $index}}
+      {{/for}}
     {{/for}}
 </div>
 ```
 
 ### 模板{{forx}}语句
 
-- sync方式，这方式只要this.list的元素有变动(添加、删除等)，会同步性更新，现在有的元素节点不会给删除等
+- 与{{for}}使用一样，这方式只要this.list的元素有变动(添加、删除等)，会同步性更新，现在有的元素节点不会给删除等
 
 ```html
 <div class="app">
-    {{forx item in this.list sync}}
+    {{forx item in this.list}}
       index({{: $index}}): {{: item.name}}
     {{/forx}}
 </div>
@@ -391,6 +495,159 @@ export default class AppComponet extends Componet{
 
 }
 ```
+
+## 组件&&组件
+
+### 组件的标签属性绑定(通讯)
+
+- 定义child组件
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'child',
+    tmpl:`<div class="child">
+        {{this.name}}
+    </div>`
+})
+export default class ChildComponet extends Componet{
+
+    name = "child name"
+
+}
+```
+
+- 在App组件里使用child组件，并使用属性通讯
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'app',
+    tmpl:`<div class="app">
+        <!--将child组件的name属性双向绑定app组件的childName-->
+        <child name="{{# this.childName}}" />
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    childName:string;
+
+    onReady(cb){
+        setTimeout(()=>{
+            this.childName = "小华";
+            super.onReady(cb);
+        }, 1000);
+    }
+}
+```
+
+### 组件的标签事件绑定(通讯)
+
+- 定义child组件
+
+```typescript
+import { Componet, VM, CmpxEvent } from "cmpx";
+
+@VM({
+    name:'child',
+    tmpl:`<div class="child">
+        {{this.name}}
+    </div>`
+})
+export default class ChildComponet extends Componet{
+
+    name = "child name",
+    //定义事件
+    changeName:CmpxEvent = new CmpxEvent();
+
+    onReady(cb){
+        setTimeout(()=>{
+            this.changeName.trigger([this.name]);
+            super.onReady(cb);
+        }, 1000);
+    }
+
+}
+```
+
+- 在App组件里使用child组件，并使用事件通讯
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'app',
+    tmpl:`<div class="app">
+        <!--绑定changeName事件-->
+        <child changeName="{{@ this.change}}" />
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    childName:string;
+
+    change(name){
+        this.childName = name;
+    }
+}
+```
+
+### 使用$var操控组件
+
+- 定义child组件
+
+```typescript
+import { Componet, VM } from "cmpx";
+
+@VM({
+    name:'child',
+    tmpl:`<div class="child">
+        {{this.name}}
+    </div>`
+})
+export default class ChildComponet extends Componet{
+
+    name = "child name",
+
+}
+```
+
+- 在App组件里定义child1，并使用对child1操作
+
+```typescript
+import { Componet, VM, viewvar } from "cmpx";
+
+@VM({
+    name:'app',
+    tmpl:`<div class="app">
+        <!--定义为child1-->
+        <child $var="child1" />
+    </div>`
+})
+export default class AppComponet extends Componet{
+
+    childName:string;
+
+    //引用child1
+    @viewvar()
+    child1:ChildComponet;
+
+    onReady(cb){
+        //操作this.child1
+        this.childName = this.child1.name;
+        super.onReady(cb);
+    }
+
+}
+```
+
+## 多平台
+
+-  在各平台可以自行配置并应用，如：IE8等。但自带的[Browser](https://github.com/cmpxs/cmpx/blob/master/src/browser.ts)只是支持只支持IE9及以上，可以参考它来配置；
+
+
 
 ## 环境安装
 
