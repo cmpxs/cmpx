@@ -1,8 +1,8 @@
-import Platform from './platform';
+import { Platform } from './platform';
 import { Componet } from './componet';
 import { Compile, CompileSubject } from './compile';
 import { HtmlDef, HtmlTagDef, ICreateElementAttr, DEFULE_TAG, DEFAULT_ATTR, DEFAULT_ATTR_PROP, DEFAULT_EVENT_DEF, SINGLE_TAG } from './htmlDef';
-import CmpxLib from './cmpxLib';
+import { CmpxLib } from './cmpxLib';
 
 let _getParentElement = HtmlDef.getParentElement,
     _setAttribute = function (element: HTMLElement, attrs: ICreateElementAttr[]) {

@@ -1,4 +1,4 @@
-import CmpxLib from "./cmpxLib";
+import { CmpxLib } from "./cmpxLib";
 
 /**
  * HtmlTag配置

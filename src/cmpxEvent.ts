@@ -1,4 +1,4 @@
-import CmpxLib from './cmpxLib';
+import { CmpxLib } from './cmpxLib';
 
 export class CmpxEvent {
     private events: any[] = [];

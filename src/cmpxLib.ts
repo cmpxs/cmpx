@@ -13,7 +13,7 @@ function testObject(obj: any) {
     }
 }
 
-export default class CmpxLib {
+export class CmpxLib {
     static stringEmpty = stringEmpty;
 
     static noop = noop;

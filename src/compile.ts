@@ -1,4 +1,4 @@
-import CmpxLib from './cmpxLib';
+import { CmpxLib } from './cmpxLib';
 import { HtmlDef, HtmlTagDef, IHtmlAttrDef, ICreateElementAttr } from './htmlDef';
 import { Componet } from './componet';
 import { CmpxEvent } from './cmpxEvent';
