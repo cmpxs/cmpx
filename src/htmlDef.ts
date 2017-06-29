@@ -207,7 +207,7 @@ export const DEFAULT_EVENT_DEF: IHtmlEventDef = {
     //attachEvent
   },
   removeEventListener(element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean) {
-    element.addEventListener(eventName, context, useCapture);
+    element.removeEventListener(eventName, context, useCapture);
     //detachEvent
   }
 };
