@@ -320,7 +320,7 @@ interface IVM {
 var _registerVM: { [selector: string]: IVM } = {},
     _vmName = '__vm__',
     _getVmConfig = function (componetDef: any): IVMConfig {
-        return componetDef.prototype[_vmName];
+        return (componetDef instanceof Componet ?  componetDef : componetDef.prototype)[_vmName];
     },
     _getVmByComponetDef = function (componetDef: any): { render: CompileRender, componetDef: Function } {
         var config = _getVmConfig(componetDef);
@@ -675,20 +675,27 @@ export class CompileRender {
 
     /**
      * 
-     * @param tmpl html模板文本
+     * @param context (string | Function | Componet) html模板文本、编译后的function或Componet
      * @param componetDef 组件定义类，如果没有传为临时模板
      */
     constructor(context: any, componetDef?: Componet | Function, param?: Object) {
-        this.componetDef = componetDef;
-        this.param = param;
-        let fn: any;
-        if (CmpxLib.isString(context)) {
-            let tagInfos = _makeTagInfos(CmpxLib.trim(context, true));
-            fn = _buildCompileFn(tagInfos);
-        } else
-            fn = context;
+        if (context instanceof Componet){
+            this.componetDef = context;
+            let vm = _getVmByComponetDef(context),
+                render = vm && vm.render;
+            this.contextFn = render.contextFn;
+        } else {
+            this.componetDef = componetDef;
+            this.param = param;
+            let fn: any;
+            if (CmpxLib.isString(context)) {
+                let tagInfos = _makeTagInfos(CmpxLib.trim(context, true));
+                fn = _buildCompileFn(tagInfos);
+            } else
+                fn = context;
 
-        this.contextFn = fn;
+            this.contextFn = fn;
+        }
     }
 
     /**
@@ -709,7 +716,7 @@ export class CompileRender {
             newSubject: CompileSubject = new CompileSubject(subject, subjectExclude);
         if (componetDef) {
             isNewComponet = true;
-            componet = new componetDef();
+            componet = componetDef instanceof Componet ? componetDef :  new componetDef();
             componet.$name = name;
             componet.$subject = newSubject;
             componet.$parentElement = parentElement;

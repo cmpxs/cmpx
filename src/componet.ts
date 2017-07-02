@@ -41,11 +41,10 @@ export class Componet {
     /**
      * 将模板生成CompileRender, 用于include标签动态绑定用
      * 注意动态模板里不要模板变量(viewvar)，请参数p传入，原因编译压缩后模板变量会改变
-     * @param tmpl 模板文本
-     * @param p 传入模板参数
+     * @param context 模板文本
      */
-    $render(tmpl: string | Function): CompileRender {
-        var rd = new CompileRender(tmpl);
+    $render(context: string | Function | Componet): CompileRender {
+        var rd = new CompileRender(context);
         return rd;
     }
 
