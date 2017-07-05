@@ -10,6 +10,7 @@
     "tsc": "tsc -p .",
     "build": "rimraf dist && npm run tsc && gulp build",
     "todemo": "npm run build && rimraf ../cmpx-demo/node_modules/cmpx/src/** && rimraf ../cmpx-demo/node_modules/cmpx/bundles/** && gulp todemo",
+    "tomvc": "npm run build && rimraf ../cmpx-demo/node_modules/cmpx/src/** && rimraf ../cmpx-demo/node_modules/cmpx/bundles/** && gulp tomvc",
     "tonpm": "npm run build && rimraf ../cmpx-npm/cmpx/src/** && rimraf ../cmpx-npm/cmpx/bundles/** && gulp tonpm"
   },
   "author": "cmpx",

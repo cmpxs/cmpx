@@ -84,3 +84,8 @@ gulp.task('tonpm', function () {
     return gulp.src(['dist/**'])
         .pipe(gulp.dest('../cmpx-npm/cmpx'));
 });
+
+gulp.task('tomvc', function () {
+    return gulp.src(['dist/**'])
+        .pipe(gulp.dest('../cmpx-mvc/node_modules/cmpx'));
+});
