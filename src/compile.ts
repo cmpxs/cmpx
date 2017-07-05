@@ -872,7 +872,7 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content);
+        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content, {subject:subject, componet:componet});
         parentElement.appendChild(element);
         contextFn && contextFn(componet, element, subject, false);
     }
@@ -1017,11 +1017,11 @@ export class Compile {
                     update: function (p: ISubscribeEvent) {
                         if (isBind) return;
                         isBind = true;
-                        eventDef.addEventListener(element, name, eventFn, false);
+                        eventDef.addEventListener(element, name, eventFn, false, {subject:subject, componet:componet});
                     },
                     remove: function (p: ISubscribeEvent) {
                         if (isBind) {
-                            eventDef.removeEventListener(element, name, eventFn, false);
+                            eventDef.removeEventListener(element, name, eventFn, false, {subject:subject, componet:componet});
                         }
                     }
                 });
@@ -1031,7 +1031,7 @@ export class Compile {
                     isWrite: boolean = !!content.write,
                     isRead: boolean = !!content.read,
                     writeFn = function () {
-                        newValue = attrDef.getAttribute(element, name);
+                        newValue = attrDef.getAttribute(element, name, '', {subject:subject, componet:componet});
                         if (value != newValue) {
                             value = newValue;
                             content.write.call(componet, newValue);
@@ -1053,21 +1053,21 @@ export class Compile {
                             newValue = content.read.call(componet);
                             if (value != newValue) {
                                 value = newValue;
-                                attrDef.setAttribute(element, name, value, subName);
+                                attrDef.setAttribute(element, name, value, subName, {subject:subject, componet:componet});
                             }
                         }
                     },
                     remove: function (p: ISubscribeEvent) {
                         if (isWrite) {
                             CmpxLib.each(writeEvent, function(item){
-                                eventDef.removeEventListener(element, item, writeFn, false);
+                                eventDef.removeEventListener(element, item, writeFn, false, {subject:subject, componet:componet});
                             });
                         }
                     }
                 });
             }
         } else
-            HtmlDef.getHtmlAttrDef(name).setAttribute(element, name, content);
+            HtmlDef.getHtmlAttrDef(name).setAttribute(element, name, content, '', {subject:subject, componet:componet});
     }
 
     public static forRender(

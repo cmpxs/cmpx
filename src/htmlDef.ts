@@ -1,5 +1,10 @@
 import { CmpxLib } from "./cmpxLib";
 
+export interface IComplieInfo {
+  subject:any,
+  componet:any
+}
+
 /**
  * HtmlTag配置
  */
@@ -32,7 +37,7 @@ export interface ICreateElementAttr {
  * @param parent 父element
  * @param content 内容, contentType为RAW_TEXT或RAW_TEXT时会传入
  */
-export function DEFAULT_CREATEELEMENT(name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string): HTMLElement {
+export function DEFAULT_CREATEELEMENT(name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string, complieInfo?:IComplieInfo): HTMLElement {
   let element: HTMLElement = document.createElement(name);
   CmpxLib.each(attrs, function (item: ICreateElementAttr) {
     HtmlDef.getHtmlAttrDef(item.name).setAttribute(element, item.name, item.value, item.subName);
@@ -59,13 +64,13 @@ export class HtmlTagDef {
   /**
    * element创建器
    */
-  createElement: (name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string) => HTMLElement;
+  createElement: (name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string, complieInfo?:IComplieInfo) => HTMLElement;
 
   constructor(
     { single = false, raw = false, createElement = null }: {
       single?: boolean;
       raw?: boolean;
-      createElement?: (name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string) => HTMLElement;
+      createElement?: (name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string, complieInfo?:IComplieInfo) => HTMLElement;
     } = {}) {
     this.single = single;
     this.raw = raw;
@@ -136,8 +141,8 @@ function _removeSpace(html: string): string {
  * HtmlAttr定义
  */
 export interface IHtmlAttrDef {
-  setAttribute: (element: HTMLElement, name: string, value: string, subName?: string) => void;
-  getAttribute: (element: HTMLElement, name: string, subName?: string) => any;
+  setAttribute: (element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) => void;
+  getAttribute: (element: HTMLElement, name: string, subName?: string, complieInfo?:IComplieInfo) => any;
   writeEvent?:string[];
 }
 
@@ -145,13 +150,13 @@ export interface IHtmlAttrDef {
  * 默认HtmlAttr定义
  */
 export const DEFAULT_ATTR: IHtmlAttrDef = {
-  setAttribute(element: HTMLElement, name: string, value: string, subName?: string) {
+  setAttribute(element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) {
     if (subName)
       element[name][subName] = value;
     else
       element.setAttribute(name, CmpxLib.toStr(value));
   },
-  getAttribute(element: HTMLElement, name: string, subName?: string):any {
+  getAttribute(element: HTMLElement, name: string, subName?: string, complieInfo?:IComplieInfo):any {
     if (subName)
       return element[name][subName];
     else
@@ -163,13 +168,13 @@ export const DEFAULT_ATTR: IHtmlAttrDef = {
  * 默认HtmlAttr prop定义
  */
 export const DEFAULT_ATTR_PROP: IHtmlAttrDef = {
-  setAttribute(element: HTMLElement, name: string, value: string, subName?: string) {
+  setAttribute(element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) {
     if (subName)
       element[name][subName] = name == 'value' ? CmpxLib.toStr(value) : value;
     else
       element[name] = name == 'value' ? CmpxLib.toStr(value) : value;
   },
-  getAttribute(element: HTMLElement, name: string, subName?: string):any {
+  getAttribute(element: HTMLElement, name: string, subName?: string, complieInfo?:IComplieInfo):any {
     if (subName)
       return element[name][subName];
     else
@@ -194,19 +199,19 @@ var _htmlAttrDefConfig: IHtmlAttrDefConfig = {
 };
 
 export interface IHtmlEventDef {
-  addEventListener: (element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean) => void;
-  removeEventListener: (element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean) => void;
+  addEventListener: (element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean, complieInfo?:IComplieInfo) => void;
+  removeEventListener: (element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean, complieInfo?:IComplieInfo) => void;
 }
 
 /**
  * 默认事件定义
  */
 export const DEFAULT_EVENT_DEF: IHtmlEventDef = {
-  addEventListener(element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean) {
+  addEventListener(element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean, complieInfo?:IComplieInfo) {
     element.addEventListener(eventName, context, useCapture);
     //attachEvent
   },
-  removeEventListener(element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean) {
+  removeEventListener(element: HTMLElement, eventName: string, context: (event: any) => any, useCapture: boolean, complieInfo?:IComplieInfo) {
     element.removeEventListener(eventName, context, useCapture);
     //detachEvent
   }
