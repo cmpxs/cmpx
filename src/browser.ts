@@ -104,11 +104,11 @@ export class Browser extends Platform {
         super();
         //htmlDef配置
         _htmlConfig();
-        //编译器启动，用于htmlDef配置后
-        Compile.startUp();
     }
 
     boot(componetDef: any): Browser {
+        //编译器启动，用于htmlDef配置后
+        Compile.startUp();
 
         let name = componetDef.prototype.$name,
             bootElement: HTMLElement = document.getElementsByTagName(name)[0];
