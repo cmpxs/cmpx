@@ -1047,6 +1047,7 @@ export class Compile {
                         eventDef.addEventListener(element, item, writeFn, false);
                     });
                 }
+                attrDef.initAttribute && attrDef.initAttribute(element, name, isRead ? content.read.call(componet) : '', subName, {subject:subject, componet:componet});
                 subject.subscribe({
                     update: function (p: ISubscribeEvent) {
                         if (isRead) {
@@ -1066,8 +1067,12 @@ export class Compile {
                     }
                 });
             }
-        } else
-            HtmlDef.getHtmlAttrDef(name).setAttribute(element, name, content, '', {subject:subject, componet:componet});
+        } else {
+            let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
+            attrDef.initAttribute && attrDef.initAttribute(element, name, content, subName, {subject:subject, componet:componet});
+            attrDef.setAttribute(element, name, content, subName, {subject:subject, componet:componet});
+            
+        }
     }
 
     public static forRender(

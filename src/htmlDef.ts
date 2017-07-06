@@ -141,6 +141,7 @@ function _removeSpace(html: string): string {
  * HtmlAttr定义
  */
 export interface IHtmlAttrDef {
+  initAttribute?: (element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) => void;
   setAttribute: (element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) => void;
   getAttribute: (element: HTMLElement, name: string, subName?: string, complieInfo?:IComplieInfo) => any;
   writeEvent?:string[];
