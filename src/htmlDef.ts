@@ -254,6 +254,14 @@ export class HtmlDef {
   }
 
   /**
+   * 是否有属性定义
+   * @param name 
+   */
+  static hasHtmlAttrDef(name: string): boolean {
+    return   !!_htmlAttrDefConfig[name.toLowerCase()];
+  }
+
+  /**
    * 获取属性定义
    * @param name 
    */
