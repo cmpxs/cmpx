@@ -2,7 +2,6 @@ export * from './src/cmpxLib';
 export * from './src/cmpxEvent';
 export * from './src/htmlDef';
 export * from './src/compileSubject';
-export * from './src/compileItem';
 export * from './src/componet';
 export * from './src/attrBase';
 export * from './src/compile';

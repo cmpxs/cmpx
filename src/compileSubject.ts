@@ -50,7 +50,6 @@ export class CompileSubject {
     subscribe(p: ISubscribeParam): ISubscribeParam {
         if (!this.isRemove) {
             p.update && this.subscribeIn('update', p);
-            p.ready && this.subscribeIn('ready', p);
             p.remove && this.subscribeIn('remove', p);
             p.detach && this.subscribeIn('detach', p);
             if (this.ready)

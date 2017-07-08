@@ -32,11 +32,11 @@ Cmpx是全完基于typesctipt语言编写的较底层MV绑定核心框架，并�
 - AppComponet.ts 里定义APP组件，并使用修释符VM定义name为app和tmpl等内容
 
 ```typescript
-//引入Componet, VM
-import { Componet, VM } from "cmpx";
+//引入Componet, VMComponet
+import { Componet, VMComponet } from "cmpx";
 
 //使用@VM配置模板和样式等信息
-@VM({
+@VMComponet({
     //定义标签名称，对应该为app
     name:'app',
     //模板内容
@@ -76,16 +76,16 @@ new Browser().boot(AppComponet);
 
 ## 组件
 
-### 修释符@VM
+### 修释符@VMComponet
 
 - 修释符@VM主要用于配置组件的模板、样式等；以下是它的配置项说明：
 
 ```typescript
 
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 import FormComponet from './FormComponet';
 
-@VM({
+@VMComponet({
     //标签名称
     name:'app',
     //模板所引用的类库，这里是一个Form组件
@@ -126,9 +126,9 @@ export default class AppComponet extends Componet{
 
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'app',
     tmpl:`<div class="app">
         {{this.text}}
@@ -164,9 +164,9 @@ export default class AppComponet extends Componet{
 - onDispose()：销毁组件时触发；
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'app',
     tmpl:`<div class="app">
         {{this.text}}
@@ -220,10 +220,10 @@ export default class AppComponet extends Componet{
 - 请看下面代码的注释说明
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 import FormComponet from './FormComponet';
 
-@VM({
+@VMComponet({
     name:'app',
     include:[ FormComponet ],
     tmpl:`<div class="app">
@@ -469,19 +469,19 @@ export default class AppComponet extends Componet{
 ```typescript
 export default class AppComponet extends Componet{
     //引用模板变量input1
-    @viewvar()
+    @VMVar()
     input1:HTMLElement;
 
     //引用模板变量input1
-    @viewvar('input1')
+    @VMVar('input1')
     inputEle:HTMLElement;
 
     //引用组件变量user1, 实现组件间访问
-    @viewvar()
+    @VMVar()
     user1:userComponet;
 
     //引用模板变量divList
-    @viewvar()
+    @VMVar()
     divList:HTMLElement[];
 
     click(){
@@ -503,9 +503,9 @@ export default class AppComponet extends Componet{
 - 定义child组件
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'child',
     tmpl:`<div class="child">
         {{this.name}}
@@ -521,9 +521,9 @@ export default class ChildComponet extends Componet{
 - 在App组件里使用child组件，并使用属性通讯
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'app',
     tmpl:`<div class="app">
         <!--将child组件的name属性双向绑定app组件的childName-->
@@ -548,9 +548,9 @@ export default class AppComponet extends Componet{
 - 定义child组件
 
 ```typescript
-import { Componet, VM, CmpxEvent } from "cmpx";
+import { Componet, VMComponet, CmpxEvent } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'child',
     tmpl:`<div class="child">
         {{this.name}}
@@ -575,9 +575,9 @@ export default class ChildComponet extends Componet{
 - 在App组件里使用child组件，并使用事件通讯
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'app',
     tmpl:`<div class="app">
         <!--绑定changeName事件-->
@@ -599,9 +599,9 @@ export default class AppComponet extends Componet{
 - 定义child组件
 
 ```typescript
-import { Componet, VM } from "cmpx";
+import { Componet, VMComponet } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'child',
     tmpl:`<div class="child">
         {{this.name}}
@@ -617,9 +617,9 @@ export default class ChildComponet extends Componet{
 - 在App组件里定义child1，并使用对child1操作
 
 ```typescript
-import { Componet, VM, viewvar } from "cmpx";
+import { Componet, VMComponet, VMVar } from "cmpx";
 
-@VM({
+@VMComponet({
     name:'app',
     tmpl:`<div class="app">
         <!--定义为child1-->
@@ -631,7 +631,7 @@ export default class AppComponet extends Componet{
     childName:string;
 
     //引用child1
-    @viewvar()
+    @VMVar()
     child1:ChildComponet;
 
     onReady(cb){

@@ -12,10 +12,10 @@ export interface IVMAttrConfig {
 var _attrs = {},
     _attrCfgName = '__attrConfig',
     _getVmAttrConfig = function(name): IVMAttrConfig {
-        return _attrs[name] || _attrs[name].config;
+        return _attrs[name] && _attrs[name].config;
     },
     _getVmAttrDef = function(name):typeof AttrBase {
-        return _attrs[name] || _attrs[name].def;
+        return _attrs[name] && _attrs[name].def;
     };
 
 /**
@@ -24,8 +24,8 @@ var _attrs = {},
  */
 export function VMAttr(config: IVMAttrConfig) {
     return function (constructor: typeof AttrBase) {
-        let pType = constructor.prototype,
-            config = pType[_attrCfgName] || (pType[_attrCfgName] = {});
+        // let pType = constructor.prototype,
+        //     config = pType[_attrCfgName] || (pType[_attrCfgName] = {});
         _attrs[config.name] = {config:config, def:constructor};
     };
 }
@@ -706,7 +706,6 @@ export class Compile {
         _loadTmplFn = loadTmplFn;
     }
 
-    
     public static createElementEx(name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
         contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => void, content?: string): void {
 
@@ -726,7 +725,18 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content, {subject:subject, componet:componet});
+        let attrList = [], vmAttrs = [];
+        CmpxLib.each(attrs, function(item:ICreateElementAttr){
+            if (_getVmAttrDef(item.name))
+                vmAttrs.push(item);
+            else
+                attrList.push(item);
+        });
+
+        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrList, parentElement, content, {subject:subject, componet:componet});
+        vmAttrs.length > 0 &&  CmpxLib.each(vmAttrs, function(item:ICreateElementAttr){
+            Compile.setVmAttribute(element, item.name, item.subName, item.value, componet, subject);
+        });
         parentElement.appendChild(element);
         contextFn && contextFn(componet, element, subject, false);
     }
@@ -765,6 +775,8 @@ export class Compile {
     public static setAttributeEx(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject, isComponet:boolean): void {
         if (isComponet){
             Compile.setAttributeCP.apply(this, arguments);
+        } else if (_getVmAttrDef(name)) {
+            Compile.setVmAttribute.apply(this, arguments);
         } else {
             Compile.setAttribute.apply(this, arguments);
         }
@@ -932,30 +944,32 @@ export class Compile {
 
 
     public static setVmAttribute(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
-        let isObj = !CmpxLib.isString(content);
+        let isObj = !CmpxLib.isString(content),
+            vmAttrDef = _getVmAttrDef(name),
+            vmAttr = new vmAttrDef(element),
+            vmAttrEvents = _getVmAttrEvents(vmAttr);
+
+        if (vmAttrEvents){
+            vmAttrEvents = vmAttrEvents.slice();
+            CmpxLib.each(vmAttrEvents, function(item){
+                let fn = item.fn;
+                item.fn = function(){ return fn.apply(vmAttr, arguments); };
+                HtmlDef.getHtmlEventDef(item.name).addEventListener(element, item.name, item.fn, false);
+            });
+        }
         if (isObj) {
             let value: any = '', newValue: any,
                 isWrite: boolean = !!content.write,
                 isRead: boolean = !!content.read,
-                vmAttrDef = _getVmAttrDef(name),
-                vmAttr = vmAttrDef ? new vmAttrDef(element) : null,
-                vmAttrEvents = vmAttr ? _getVmAttrEvents(vmAttr) : null,
                 writeFn = function () {
-                    newValue = vmAttr.$content();
+                    vmAttr.onWrite();
+                    newValue = vmAttr.content();
                     if (value != newValue) {
                         value = newValue;
                         content.write.call(componet, newValue);
                         componet.$updateAsync();
                     }
                 };
-            if (vmAttrEvents){
-                vmAttrEvents = vmAttrEvents.slice();
-                CmpxLib.each(vmAttrEvents, function(item){
-                    let fn = item.fn;
-                    item.fn = function(){ return fn.apply(vmAttr, arguments); };
-                    HtmlDef.getHtmlEventDef(item.name).addEventListener(element, item.name, item.fn, false);
-                });
-            }
 
             subject.subscribe({
                 update: function (p: ISubscribeEvent) {
@@ -963,24 +977,35 @@ export class Compile {
                         newValue = content.read.call(componet);
                         if (value != newValue) {
                             value = newValue;
-                            vmAttr.$content(value);
-                        }
-                    }
-                },
-                remove: function (p: ISubscribeEvent) {
-                    if (vmAttrEvents) {
-                        CmpxLib.each(vmAttrEvents, function (item) {
-                            HtmlDef.getHtmlEventDef(item.name).removeEventListener(element, item.name, item.fn, false);
-                        });
-                    }
+                            vmAttr.content(value);
+                            vmAttr.onRead();
+                        } else
+                            writeFn();
+                    } else if (isWrite)
+                        writeFn();
                 }
             });
         } else {
-            let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
-            attrDef.initAttribute && attrDef.initAttribute(element, name, content, subName, {subject:subject, componet:componet});
-            attrDef.setAttribute(element, name, content, subName, {subject:subject, componet:componet});
-            
+            vmAttr.content(content);
+            vmAttr.onRead();
         }
+        subject.subscribe({
+            update: function (p: ISubscribeEvent) {
+                vmAttr.onUpdate();
+            },
+            ready:function(){
+                vmAttr.onReady();
+            },
+            remove: function (p: ISubscribeEvent) {
+                vmAttr.$isDisposed = true;
+                vmAttr.onDispose();
+                if (vmAttrEvents) {
+                    CmpxLib.each(vmAttrEvents, function (item) {
+                        HtmlDef.getHtmlEventDef(item.name).removeEventListener(element, item.name, item.fn, false);
+                    });
+                }
+            }
+        });
     }
 
     public static forRender(
@@ -1419,7 +1444,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         var bindAttrs = [], stAtts = [], names: string[];
         CmpxLib.each(attrs, function (item: IAttrInfo) {
             if (item.name == '$var' || item.name == '$array') return;
-            if (HtmlDef.hasHtmlAttrDef(item.name) || item.bind)
+            if (item.bind)
                 bindAttrs.push(item);
             else {
                 names = _makeSubName(item.name);
