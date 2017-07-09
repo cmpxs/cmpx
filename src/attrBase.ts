@@ -54,13 +54,16 @@ export class AttrBase {
     }
 
     css(name:string, value?:any){
-        return this.attr('style', value, name);
+        if (arguments.length == 1)
+            return this.attr('style', name);
+        else
+            this.attr('style', name, value);
     }
 
-    attr(name:string, value?:any, subName?:string){
+    attr(name:string, subName?:string, value?:any){
         let attrDef = HtmlDef.getHtmlAttrDef(name);
-        if (arguments.length == 0){
-            return attrDef.getAttribute(this.element, name, subName, this.getCompileInfo());
+        if (arguments.length <= 2){
+            return attrDef.getAttribute(this.element, name, subName, this.getCompileInfo()) || '';
         } else
             attrDef.setAttribute(this.element, name, value, subName, this.getCompileInfo());
     }

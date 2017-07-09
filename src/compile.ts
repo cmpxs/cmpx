@@ -11,11 +11,8 @@ export interface IVMAttrConfig {
 
 var _attrs = {},
     _attrCfgName = '__attrConfig',
-    _getVmAttrConfig = function(name): IVMAttrConfig {
-        return _attrs[name] && _attrs[name].config;
-    },
     _getVmAttrDef = function(name):typeof AttrBase {
-        return _attrs[name] && _attrs[name].def;
+        return _attrs[name];
     };
 
 /**
@@ -24,9 +21,7 @@ var _attrs = {},
  */
 export function VMAttr(config: IVMAttrConfig) {
     return function (constructor: typeof AttrBase) {
-        // let pType = constructor.prototype,
-        //     config = pType[_attrCfgName] || (pType[_attrCfgName] = {});
-        _attrs[config.name] = {config:config, def:constructor};
+        _attrs[config.name] = constructor;
     };
 }
 
@@ -48,6 +43,24 @@ export function VMEvent(name?: string) {
         });
     }
 }
+
+
+var _vmCPName = '__vmNames',
+    _getVmNames = function(target:any) {
+        return target[_vmCPName];
+    };
+
+/**
+ * 引用模板变量$var
+ * @param name 变量名称，未指定为属性名称
+ */
+export function VMName(name: string) {
+    return function (target: any, propKey: string) {
+        var names = (target[_vmCPName] || (target[_vmCPName] = {}));
+        names[name] = propKey;
+    }
+}
+
 var _undef: any;
 
 interface IBindInfo {
@@ -588,8 +601,9 @@ export class CompileRender {
         if (!componet) {
             throw new Error('render缺少Componet参数');
         }
+        let vmNames = _getVmNames(componet);
         CmpxLib.each(attrs, function(item:ICreateElementAttr){
-            componet[item.name] = item.value;
+            componet[(vmNames && vmNames[item.name]) || item.name] = item.value;
         });
         //注意parentElement问题，但现在context只能放{{tmpl}}
         contextFn && contextFn(componet, parentElement, newSubject, true);
@@ -783,7 +797,9 @@ export class Compile {
     }
     public static setAttributeCP(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
         let isObj = !CmpxLib.isString(content),
-            parent = componet.$parent;
+            parent = componet.$parent,
+            vmNames = _getVmNames(componet);
+        vmNames &&　(name = vmNames[name] || name);
         if (isObj) {
             let isEvent = !!content.event,
                 update;
@@ -835,7 +851,6 @@ export class Compile {
                     pSubP:ISubscribeParam = isWrite || isRead ? parent.$subject.subscribe({
                         update:updateFn
                     }) : null;
-                let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
                 subject.subscribe({
                     update: updateFn,
                     remove:function(){
@@ -947,14 +962,19 @@ export class Compile {
         let isObj = !CmpxLib.isString(content),
             vmAttrDef = _getVmAttrDef(name),
             vmAttr = new vmAttrDef(element),
-            vmAttrEvents = _getVmAttrEvents(vmAttr);
+            vmTTT:any = vmAttr,
+            vmAttrEvents = _getVmAttrEvents(vmAttr),
+            vmEvents = [];
+        vmTTT['$name'] = name;
+        vmTTT['$subject'] = subject;
+        vmTTT['$componet'] = componet;
 
         if (vmAttrEvents){
-            vmAttrEvents = vmAttrEvents.slice();
             CmpxLib.each(vmAttrEvents, function(item){
-                let fn = item.fn;
-                item.fn = function(){ return fn.apply(vmAttr, arguments); };
-                HtmlDef.getHtmlEventDef(item.name).addEventListener(element, item.name, item.fn, false);
+                let name = item.name,
+                    fn = function(){ return item.fn.apply(vmAttr, arguments); };
+                vmEvents.push({name:name, fn:fn});
+                HtmlDef.getHtmlEventDef(name).addEventListener(element, name, fn, false);
             });
         }
         if (isObj) {
@@ -1000,7 +1020,7 @@ export class Compile {
                 vmAttr.$isDisposed = true;
                 vmAttr.onDispose();
                 if (vmAttrEvents) {
-                    CmpxLib.each(vmAttrEvents, function (item) {
+                    CmpxLib.each(vmEvents, function (item) {
                         HtmlDef.getHtmlEventDef(item.name).removeEventListener(element, item.name, item.fn, false);
                     });
                 }
