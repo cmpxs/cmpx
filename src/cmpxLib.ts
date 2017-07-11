@@ -171,9 +171,11 @@ export class CmpxLib {
         }
     }
 
-    static extend(obj: Object, p: Object): Object {
-        if (obj && p) {
-            CmpxLib.eachProp(p, function(item: string, name: string){ obj[name] = item; });
+    static extend(obj: Object, ...args: Object[]): Object {
+        if (obj) {
+            CmpxLib.each(args, function(p:Object){
+                p && CmpxLib.eachProp(p, function(item: string, name: string){ obj[name] = item; });
+            });
         }
         return obj;
     }
