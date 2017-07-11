@@ -107,7 +107,7 @@ export class Browser extends Platform {
         _htmlConfig();
     }
 
-    boot(componetDef: any): Browser {
+    boot(componetDef: any, callback?:(componet: Componet, subject: CompileSubject)=>void): Browser {
         //编译器启动，用于htmlDef配置后
         Compile.startUp();
 
@@ -141,6 +141,7 @@ export class Browser extends Platform {
                     });
                 };
                 window.addEventListener('unload', _unload, false);
+                callback && callback(refComponet, newSubject);
             });
         };
 
