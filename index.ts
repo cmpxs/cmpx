@@ -3,7 +3,7 @@ export * from './src/cmpxEvent';
 export * from './src/htmlDef';
 export * from './src/compileSubject';
 export * from './src/componet';
-export * from './src/attrBase';
+export * from './src/bind';
 export * from './src/compile';
 export * from './src/platform';
 export * from './src/browser';

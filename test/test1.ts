@@ -1,4 +1,4 @@
-import { Compile, VM, CompileSubject, HtmlTagDef, Componet, CompileRender } from '../index';
+import { Compile, VMComponet, CompileSubject, HtmlTagDef, Componet, CompileRender } from '../index';
 
 import { expect } from 'chai';
 import 'mocha';
@@ -6,13 +6,13 @@ import 'mocha';
 
 import fs = require('fs');
 
-@VM({name:'test'})
+@VMComponet({name:'test'})
 class TestCP1 extends Componet{
 
 }
 
 var tmpl = `
-<div>
+<div attr="{{ this.attr}}">
 
 {{tmpl id="tmpl1"}}
   dsfsf

@@ -13,23 +13,30 @@ export class Componet {
      */
     $update(p?: any) {
         if (this.$isDisposed) return;
+        this.clearUpdateTime();
         this.onUpdateBefore(() => {
             if (this.$isDisposed) return;
             this.$subject.update({
                 componet: this,
                 param: p
             });
-            this.onUpdate(function(){}, p);
+            this.onUpdate(function () { }, p);
         }, p);
     }
 
-    private updateId:any;
+    private updateId: any;
+    private clearUpdateTime(){
+        if(this.updateId){
+            clearTimeout(this.updateId);
+            this.updateId = null;
+        }
+    }
     /**
      * 步异步更新View，View与Componet数据同步
      * @param p 传入参数
      */
-   $updateAsync(callback?:()=>void, p?:any){
-       this.updateId && clearTimeout(this.updateId);
+    $updateAsync(callback?: () => void, p?: any) {
+        this.clearUpdateTime();
         this.updateId = setTimeout(() => {
             this.updateId = null;
             this.$update(p);

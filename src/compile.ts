@@ -3,60 +3,60 @@ import { HtmlDef, HtmlTagDef, IHtmlAttrDef, ICreateElementAttr } from './htmlDef
 import { Componet } from './componet';
 import { CmpxEvent } from './cmpxEvent';
 import { CompileSubject, ISubscribeEvent, ISubscribeParam } from './compileSubject';
-import { AttrBase } from './attrBase';
+import { Bind } from './bind';
 
-export interface IVMAttrConfig {
-    name:string
+export interface IVMBindConfig {
+    name: string
 }
 
-var _attrs = {},
-    _attrCfgName = '__attrConfig',
-    _getVmAttrDef = function(name):typeof AttrBase {
-        return _attrs[name];
+var _binds = {},
+    _bindCfgName = '__bindConfig',
+    _getBindDef = function (name): typeof Bind {
+        return _binds[name];
     };
 
 /**
  * 注入组件配置信息
  * @param config 
  */
-export function VMAttr(config: IVMAttrConfig) {
-    return function (constructor: typeof AttrBase) {
-        _attrs[config.name] = constructor;
+export function VMBind(config: IVMBindConfig) {
+    return function (constructor: typeof Bind) {
+        _binds[config.name] = constructor;
     };
 }
 
 var _attrEventName = '__attrEventName',
-    _getVmAttrEvents = function(attrbase: AttrBase){
-        return attrbase[_attrEventName];
+    _getBindEvents = function (bind: Bind) {
+        return bind[_attrEventName];
     };
 /**
  * 引用模板变量$var
  * @param name 变量名称，未指定为属性名称
  */
 export function VMEvent(name?: string) {
-    return function (attrbase: AttrBase, propKey: string) {
+    return function (bind: Bind, propKey: string) {
         name || (name = propKey);
-        var events = (attrbase[_attrEventName] || (attrbase[_attrEventName] = []));
+        var events = (bind[_attrEventName] || (bind[_attrEventName] = []));
         events.push({
-            name:name,
-            fn:attrbase[propKey]
+            name: name,
+            fn: bind[propKey]
         });
     }
 }
 
-
-var _vmCPName = '__vmNames',
-    _getVmNames = function(target:any) {
-        return target[_vmCPName];
+var _vmAttrName = '__attrNames',
+    _getVmAttrs = function (target: any): { [name: string]: string } {
+        return target[_vmAttrName];
     };
 
 /**
  * 引用模板变量$var
  * @param name 变量名称，未指定为属性名称
  */
-export function VMName(name: string) {
+export function VMAttr(name?: string) {
     return function (target: any, propKey: string) {
-        var names = (target[_vmCPName] || (target[_vmCPName] = {}));
+        name || (name = propKey);
+        var names = (target[_vmAttrName] || (target[_vmAttrName] = {}));
         names[name] = propKey;
     }
 }
@@ -106,23 +106,23 @@ interface IAttrInfo {
 
 //新建一个text节点
 var _newTextContent = function (tmpl: string, start: number, end: number): ITagInfo {
-        var text = tmpl.substring(start, end),
-            bind = _cmdDecodeAttrRegex.test(text),
-            bindInfo: IBindInfo = bind ? _getBind(text, '"') : null;
-        return {
-            tagName: '',
-            target: false,
-            cmd: false,
-            find: text,
-            content: bind ? "" : text,
-            attrs: null,
-            end: true,
-            single: true,
-            index: start,
-            bind: bind,
-            bindInfo: bindInfo
-        };
-    },
+    var text = tmpl.substring(start, end),
+        bind = _cmdDecodeAttrRegex.test(text),
+        bindInfo: IBindInfo = bind ? _getBind(text, '"') : null;
+    return {
+        tagName: '',
+        target: false,
+        cmd: false,
+        find: text,
+        content: bind ? "" : text,
+        attrs: null,
+        end: true,
+        single: true,
+        index: start,
+        bind: bind,
+        bindInfo: bindInfo
+    };
+},
     _singleCmd = {
         'include': true
     },
@@ -134,7 +134,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     _makeTextTag = function (tmpl: string): string {
         //
         return tmpl.replace(_cmdEncodeAttrRegex, function (find, content, content1) {
-            return ['$($', _encodeURIComponentEx(content||content1), '$)$'].join('');
+            return ['$($', _encodeURIComponentEx(content || content1), '$)$'].join('');
         });
     },
     //把$($this.name$)$还原
@@ -259,7 +259,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         let write: string, event: string,
             onceList = [], read: boolean = false, isOnce: boolean = false,
             onlyBing = _onlyBindRegex.test(value),
-            readTxt:string;
+            readTxt: string;
 
         let type: string = '', reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
             content = decodeURIComponent(content);
@@ -296,7 +296,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
             return readTxt;
         }), split].join('');
 
-        if (onlyBing){
+        if (onlyBing) {
             readContent = isOnce ? 'once0' : readTxt;
         }
         //readContent = readContent.replace(_removeEmptySplitRegex, '');
@@ -306,7 +306,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
             if (isOnce) {
                 let oList = [];
                 CmpxLib.each(onceList, function (item: string, index: number) {
-                    oList.push(['once', index, ' = ', onlyBing ? item : ('CmpxLib.toStr('+ item+ ')')].join(''));
+                    oList.push(['once', index, ' = ', onlyBing ? item : ('CmpxLib.toStr(' + item + ')')].join(''));
                 });
                 once = 'var ' + oList.join(',') + ';';
             }
@@ -357,7 +357,7 @@ export interface IVMConfig {
     //标签名称
     name: string;
     //模板要引用的类库，如组件
-    include?:any[];
+    include?: any[];
     //模板，可以编译后的function, 如果有配置tmplUrl, 优先使用tmplUrl
     tmpl?: string | Function;
     //模板url，可以编译后的function，如果加载失败使用tmpl内容
@@ -365,19 +365,19 @@ export interface IVMConfig {
     //样式文本, 可以和sytleUrl同时使用
     style?: string | Function;
     //样式url, 可以和sytle同时使用
-    styleUrl?: string|Function;
+    styleUrl?: string | Function;
 }
 
 interface IVM {
     render: CompileRender;
     componetDef: Function;
-    vm?:IVMConfig;
+    vm?: IVMConfig;
 }
 
 var _registerVM: { [selector: string]: IVM } = {},
     _vmName = '__vm__',
     _getVmConfig = function (componetDef: any): IVMConfig {
-        return (componetDef instanceof Componet ?  componetDef : componetDef.prototype)[_vmName];
+        return (componetDef instanceof Componet ? componetDef : componetDef.prototype)[_vmName];
     },
     _getVmByComponetDef = function (componetDef: any): { render: CompileRender, componetDef: Function } {
         var config = _getVmConfig(componetDef);
@@ -394,14 +394,14 @@ export function VMComponet(vm: IVMConfig) {
     return function (constructor: Function) {
         _registerVM[vm.name] = {
             render: null,
-            vm:vm,
+            vm: vm,
             componetDef: constructor
         };
         var rdF = function () {
             //_registerVM[vm.name].render = new CompileRender(vm.tmpl, constructor);
             let head = document.head;
 
-            if (vm.styleUrl && !CmpxLib.isString(vm.styleUrl)){
+            if (vm.styleUrl && !CmpxLib.isString(vm.styleUrl)) {
                 vm.style = (vm.styleUrl as Function)();
                 vm.styleUrl = null;
             }
@@ -449,7 +449,7 @@ let _tmplCount = 0, _tmplFnList = [], _tmplLoaded = function (callback) {
 };
 
 interface IViewvarDef {
-    [name: string]:string;
+    [name: string]: string;
 }
 var _viewvarName = '__viewvar__',
     _getViewvarDef = function (componet: Componet): IViewvarDef {
@@ -477,7 +477,7 @@ let _tmplName = '__tmpl__',
             return tmpls[id];
     },
     _insertAfter = function (newElement: Node, refElement: Node, parent: Node) {
-        if (!parent)return;
+        if (!parent) return;
         let nextSibling = refElement.nextSibling;
         if (nextSibling) {
             parent.insertBefore(newElement, nextSibling);
@@ -519,11 +519,11 @@ let _tmplName = '__tmpl__',
         }
         return null;
     },
-    _detachElement = function(nodes:Node[]){
-        if (nodes && nodes.length > 0){
+    _detachElement = function (nodes: Node[]) {
+        if (nodes && nodes.length > 0) {
             let //pNode:Node = _getParentElement(nodes[0]),
                 fragment = document.createDocumentFragment();
-            CmpxLib.each(nodes, function(item){
+            CmpxLib.each(nodes, function (item) {
                 fragment.appendChild(item);
             });
             return fragment;
@@ -546,7 +546,7 @@ export class CompileRender {
      * @param componetDef 组件定义类，如果没有传为临时模板
      */
     constructor(context: any, componetDef?: Componet | Function, param?: Object) {
-        if (context instanceof Componet){
+        if (context instanceof Componet) {
             this.componetDef = context;
             let vm = _getVmByComponetDef(context),
                 render = vm && vm.render;
@@ -570,7 +570,7 @@ export class CompileRender {
      * @param refElement 在element之后插入内容
      * @param parentComponet 父组件
      */
-    complie(refNode: Node, attrs:ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: Function): { newSubject: CompileSubject, refComponet: Componet } {
+    complie(refNode: Node, attrs: ICreateElementAttr[], parentComponet?: Componet, subject?: CompileSubject, contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) => void, subjectExclude?: { [type: string]: boolean }, param?: Function): { newSubject: CompileSubject, refComponet: Componet } {
         var componetDef: any = this.componetDef;
 
         subject || (subject = (parentComponet ? parentComponet.$subject : null));
@@ -583,7 +583,7 @@ export class CompileRender {
             newSubject: CompileSubject = new CompileSubject(subject, subjectExclude);
         if (componetDef) {
             isNewComponet = true;
-            componet = componetDef instanceof Componet ? componetDef :  new componetDef();
+            componet = componetDef instanceof Componet ? componetDef : new componetDef();
             componet.$name = name;
             componet.$subject = newSubject;
             componet.$parentElement = parentElement;
@@ -601,18 +601,18 @@ export class CompileRender {
         if (!componet) {
             throw new Error('render缺少Componet参数');
         }
-        let vmNames = _getVmNames(componet);
-        CmpxLib.each(attrs, function(item:ICreateElementAttr){
-            componet[(vmNames && vmNames[item.name]) || item.name] = item.value;
+        let vmAttrs = _getVmAttrs(componet);
+        CmpxLib.each(attrs, function (item: ICreateElementAttr) {
+            componet[(vmAttrs && vmAttrs[item.name]) || item.name] = item.value;
         });
         //注意parentElement问题，但现在context只能放{{tmpl}}
         contextFn && contextFn(componet, parentElement, newSubject, true);
 
         newSubject.subscribe({
             remove: function (p: ISubscribeEvent) {
-                let rmFn = function(){
-                    let vv:IViewvarDef = _getViewvarDef(componet);
-                    CmpxLib.eachProp(vv, function(item){
+                let rmFn = function () {
+                    let vv: IViewvarDef = _getViewvarDef(componet);
+                    CmpxLib.eachProp(vv, function (item) {
                         this[item] = null;
                     }, componet);
                     isNewComponet && (componet.$isDisposed = true, componet.onDispose());
@@ -645,15 +645,15 @@ export class CompileRender {
                 componet: componet
             });
             fragment = document.createDocumentFragment();
-            let detachFr:DocumentFragment;
+            let detachFr: DocumentFragment;
             subject && subject.subscribe({
-                detach:function(){
+                detach: function () {
                     if (componet.$isDisposed) return;
                     if (subject.isDetach)
                         detachFr = _detachElement(childNodes);
                     else {
                         if (isNewComponet)
-                            newSubject.update({componet:componet});
+                            newSubject.update({ componet: componet });
                         _insertAfter(detachFr, refNode, _getParentElement(refNode));
                         detachFr = null;
                     }
@@ -670,24 +670,24 @@ export class CompileRender {
             });
             readyFn();
         },
-        readyFn = function () {
-            _insertAfter(fragment, refNode, _getParentElement(refNode));
-            let readyEnd = function(){
-                newSubject.ready({
-                    componet: componet
-                });
-                //reay后再次补发update
-                newSubject.update({
-                    componet: componet
-                });
-            };
-            if (isNewComponet)
-                componet.onReady(function () {
+            readyFn = function () {
+                _insertAfter(fragment, refNode, _getParentElement(refNode));
+                let readyEnd = function () {
+                    newSubject.ready({
+                        componet: componet
+                    });
+                    //reay后再次补发update
+                    newSubject.update({
+                        componet: componet
+                    });
+                };
+                if (isNewComponet)
+                    componet.onReady(function () {
+                        readyEnd();
+                    }, null);
+                else
                     readyEnd();
-                }, null);
-            else
-                readyEnd();
-        };
+            };
         if (isNewComponet) {
             componet.onInit(function (err) {
                 initFn();
@@ -725,7 +725,7 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        if ( _registerVM[name]){
+        if (_registerVM[name]) {
             Compile.createComponet.apply(this, arguments);
         } else {
             Compile.createElement.apply(this, arguments);
@@ -735,29 +735,46 @@ export class Compile {
 
 
     public static createElement(name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
-        contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void, content?: string): void {
+        contextFn: (componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean, binds: any) => void, content?: string): void {
 
         if (subject.isRemove) return;
 
-        let attrList = [], vmAttrs = [];
-        CmpxLib.each(attrs, function(item:ICreateElementAttr){
-            if (_getVmAttrDef(item.name))
-                vmAttrs.push(item);
-            else
-                attrList.push(item);
+        let attrList = [], bindList = [], binds = {}, vmAttrs, bindDef, bind, attrName;
+        let makeAttrs = function (binds, bind, attrs) {
+            CmpxLib.eachProp(attrs, function (item, n) {
+                binds[n] = { bind: bind, attr: item, done: false };
+            });
+        };
+        CmpxLib.each(attrs, function (item: ICreateElementAttr) {
+            attrName = item.name;
+            bindDef = _getBindDef(attrName);
+            if (bindDef) {
+                bind = new bindDef(element);
+                bindList.push(bind);
+                vmAttrs = _getVmAttrs(bind);
+                bind['$name'] = attrName;
+                bind['$subject'] = subject;
+                bind['$componet'] = componet;
+                makeAttrs(binds, bind, vmAttrs);
+            }
+            binds[attrName] && (binds[attrName].value = item.value);
+            attrList.push(item);
         });
 
-        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrList, parentElement, content, {subject:subject, componet:componet});
-        vmAttrs.length > 0 &&  CmpxLib.each(vmAttrs, function(item:ICreateElementAttr){
-            Compile.setVmAttribute(element, item.name, item.subName, item.value, componet, subject);
-        });
+        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrList, parentElement, content, { subject: subject, componet: componet });
         parentElement.appendChild(element);
-        contextFn && contextFn(componet, element, subject, false);
+        contextFn && contextFn(componet, element, subject, false, bind && binds);
+        bind && CmpxLib.eachProp(binds, function (item, n) {
+            Compile.setBindAttribute(element, n, '', item.value, componet, subject, binds);
+        });
+        bindList.length > 0 && CmpxLib.each(bindList, function (item) {
+            Compile.setBind(element, componet, subject, item);
+        });
     }
 
     public static createComponet(
         name: string, attrs: ICreateElementAttr[], componet: Componet, parentElement: HTMLElement, subject: CompileSubject,
-        contextFn: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void
+        contextFn: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) => void
     ): void {
         if (subject.isRemove) return;
 
@@ -765,32 +782,32 @@ export class Compile {
             componetDef: any = vm.componetDef,
             refNode = _getRefNode(parentElement);
 
-        Compile.renderComponet(componetDef, refNode, attrs, function (subject, componet:Componet) {
-         }, componet, subject, contextFn);
+        Compile.renderComponet(componetDef, refNode, attrs, function (subject, componet: Componet) {
+        }, componet, subject, contextFn);
 
     }
 
-    public static setViewvar(addFn:()=>void, removeFn:()=>void, componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean){
+    public static setViewvar(addFn: () => void, removeFn: () => void, componet: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) {
         let vInfo = addFn && addFn.call(isComponet ? componet : element),
             owner = isComponet ? componet.$parent : componet,
-            vv:IViewvarDef = _getViewvarDef(owner),
+            vv: IViewvarDef = _getViewvarDef(owner),
             propKey = vv && vv[vInfo.name],
             hasDef = !!(vv && propKey);
 
         hasDef && (owner[propKey] = vInfo.value);
 
         subject.subscribe({
-            remove:function(){
+            remove: function () {
                 hasDef && (owner[propKey] = null);
                 removeFn && removeFn.call(isComponet ? componet : element);
             }
         });
     }
-    public static setAttributeEx(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject, isComponet:boolean): void {
-        if (isComponet){
+    public static setAttributeEx(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject, isComponet: boolean, binds: any): void {
+        if (isComponet) {
             Compile.setAttributeCP.apply(this, arguments);
-        } else if (_getVmAttrDef(name)) {
-            Compile.setVmAttribute.apply(this, arguments);
+        } else if (binds && binds[name]) {
+            Compile.setBindAttribute.apply(this, arguments);
         } else {
             Compile.setAttribute.apply(this, arguments);
         }
@@ -798,8 +815,8 @@ export class Compile {
     public static setAttributeCP(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
         let isObj = !CmpxLib.isString(content),
             parent = componet.$parent,
-            vmNames = _getVmNames(componet);
-        vmNames &&　(name = vmNames[name] || name);
+            vmAttrs = _getVmAttrs(componet);
+        vmAttrs && 　(name = vmAttrs[name] || name);
         if (isObj) {
             let isEvent = !!content.event,
                 update;
@@ -834,7 +851,7 @@ export class Compile {
                             parent.$updateAsync();
                         }
                     },
-                    updateFn = function(p: ISubscribeEvent){
+                    updateFn = function (p: ISubscribeEvent) {
                         if (isRead) {
                             newValue = content.read.call(parent);
                             if (value != newValue) {
@@ -848,12 +865,12 @@ export class Compile {
                             writeFn(p);
                         }
                     },
-                    pSubP:ISubscribeParam = isWrite || isRead ? parent.$subject.subscribe({
-                        update:updateFn
+                    pSubP: ISubscribeParam = isWrite || isRead ? parent.$subject.subscribe({
+                        update: updateFn
                     }) : null;
                 subject.subscribe({
                     update: updateFn,
-                    remove:function(){
+                    remove: function () {
                         pSubP && parent.$subject && parent.$subject.unSubscribe(pSubP);
                     }
                 });
@@ -868,7 +885,7 @@ export class Compile {
         let isObj = !CmpxLib.isString(content),
             value: string = '',
             once: boolean = isObj ? content.once : false,
-            readFn = isObj ? 　content.read : null,
+            readFn = isObj ? content.read : null,
             textNode = document.createTextNode(isObj ? (once ? readFn.call(componet) : value) : content);
         parentElement.appendChild(textNode);
         subject.subscribe({
@@ -887,7 +904,7 @@ export class Compile {
 
     public static setAttribute(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
         let isObj = !CmpxLib.isString(content),
-            vmAttr = _getVmAttrDef(name);
+            compileInfo = { subject: subject, componet: componet };
         if (isObj) {
             let isEvent = !!content.event,
                 update, eventDef;
@@ -899,11 +916,11 @@ export class Compile {
                     update: function (p: ISubscribeEvent) {
                         if (isBind) return;
                         isBind = true;
-                        eventDef.addEventListener(element, name, eventFn, false, {subject:subject, componet:componet});
+                        eventDef.addEventListener(element, name, eventFn, false, compileInfo);
                     },
                     remove: function (p: ISubscribeEvent) {
                         if (isBind) {
-                            eventDef.removeEventListener(element, name, eventFn, false, {subject:subject, componet:componet});
+                            eventDef.removeEventListener(element, name, eventFn, false, compileInfo);
                         }
                     }
                 });
@@ -913,7 +930,7 @@ export class Compile {
                     isWrite: boolean = !!content.write,
                     isRead: boolean = !!content.read,
                     writeFn = function () {
-                        newValue = attrDef.getAttribute(element, name, '', {subject:subject, componet:componet});
+                        newValue = attrDef.getAttribute(element, name, '', compileInfo);
                         if (value != newValue) {
                             value = newValue;
                             content.write.call(componet, newValue);
@@ -925,25 +942,25 @@ export class Compile {
                     writeEvent = attrDef.writeEvent || ['change', 'click'];
                 if (isWrite) {
                     eventDef = HtmlDef.getHtmlEventDef(name);
-                    CmpxLib.each(writeEvent, function(item){
+                    CmpxLib.each(writeEvent, function (item) {
                         eventDef.addEventListener(element, item, writeFn, false);
                     });
                 }
-                attrDef.initAttribute && attrDef.initAttribute(element, name, isRead ? content.read.call(componet) : '', subName, {subject:subject, componet:componet});
+                attrDef.initAttribute && attrDef.initAttribute(element, name, isRead ? content.read.call(componet) : '', subName, compileInfo);
                 subject.subscribe({
                     update: function (p: ISubscribeEvent) {
                         if (isRead) {
                             newValue = content.read.call(componet);
                             if (value != newValue) {
                                 value = newValue;
-                                attrDef.setAttribute(element, name, value, subName, {subject:subject, componet:componet});
+                                attrDef.setAttribute(element, name, value, subName, compileInfo);
                             }
                         }
                     },
                     remove: function (p: ISubscribeEvent) {
                         if (isWrite) {
-                            CmpxLib.each(writeEvent, function(item){
-                                eventDef.removeEventListener(element, item, writeFn, false, {subject:subject, componet:componet});
+                            CmpxLib.each(writeEvent, function (item) {
+                                eventDef.removeEventListener(element, item, writeFn, false, compileInfo);
                             });
                         }
                     }
@@ -951,76 +968,99 @@ export class Compile {
             }
         } else {
             let attrDef: IHtmlAttrDef = HtmlDef.getHtmlAttrDef(name);
-            attrDef.initAttribute && attrDef.initAttribute(element, name, content, subName, {subject:subject, componet:componet});
-            attrDef.setAttribute(element, name, content, subName, {subject:subject, componet:componet});
-            
+            attrDef.initAttribute && attrDef.initAttribute(element, name, content, subName, compileInfo);
+            attrDef.setAttribute(element, name, content, subName, compileInfo);
         }
     }
 
+    public static setBindAttribute(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject, binds: any): void {
+        let bindInfo = binds[name];
+        if (bindInfo.done) return;
+        bindInfo.done = true;
 
-    public static setVmAttribute(element: HTMLElement, name: string, subName: string, content: any, componet: Componet, subject: CompileSubject): void {
-        let isObj = !CmpxLib.isString(content),
-            vmAttrDef = _getVmAttrDef(name),
-            vmAttr = new vmAttrDef(element),
-            vmTTT:any = vmAttr,
-            vmAttrEvents = _getVmAttrEvents(vmAttr),
-            vmEvents = [];
-        vmTTT['$name'] = name;
-        vmTTT['$subject'] = subject;
-        vmTTT['$componet'] = componet;
+        let bind: any = bindInfo.bind,
+            bindAttrName = '__bindAttr__',
+            bindAttrs = bind[bindAttrName] || (bind[bindAttrName] = []),
+            isObj = !CmpxLib.isString(content);
+            // attrDef = HtmlDef.getHtmlAttrDef(name),
+            // compileInfo = { subject: subject, componet: componet };
+        bindAttrs.push({
+            isObj: isObj,
+            attrName: bindInfo.attr,
+            attrDef: HtmlDef.getHtmlAttrDef(name),
+            content: content,
+            isWrite: isObj ? !!content.write : false,
+            isRead: isObj ? !!content.read : true,
+            //compileInfo: compileInfo,
+            name:name,
+            subName:subName
+        });
+        if (!isObj) bind[bindInfo.attr] = content;
+    }
 
-        if (vmAttrEvents){
-            CmpxLib.each(vmAttrEvents, function(item){
+    private static setBind(element: HTMLElement, componet: Componet, subject: CompileSubject, bind: any): void {
+        let bindEvents = _getBindEvents(bind),
+            events = [];
+
+        if (bindEvents) {
+            CmpxLib.each(bindEvents, function (item) {
                 let name = item.name,
-                    fn = function(){ return item.fn.apply(vmAttr, arguments); };
-                vmEvents.push({name:name, fn:fn});
+                    fn = function () { return item.fn.apply(bind, arguments); };
+                events.push({ name: name, fn: fn });
                 HtmlDef.getHtmlEventDef(name).addEventListener(element, name, fn, false);
             });
         }
-        if (isObj) {
-            let value: any = '', newValue: any,
-                isWrite: boolean = !!content.write,
-                isRead: boolean = !!content.read,
-                writeFn = function () {
-                    vmAttr.onWrite();
-                    newValue = vmAttr.content();
-                    if (value != newValue) {
-                        value = newValue;
-                        content.write.call(componet, newValue);
-                        componet.$updateAsync();
-                    }
-                };
 
-            subject.subscribe({
-                update: function (p: ISubscribeEvent) {
-                    if (isRead) {
-                        newValue = content.read.call(componet);
-                        if (value != newValue) {
-                            value = newValue;
-                            vmAttr.content(value);
-                            vmAttr.onRead();
+        let bindAttrName = '__bindAttr__',
+            bindAttrs = bind[bindAttrName],
+            compileInfo = { subject: subject, componet: componet },
+            update = function () {
+                let ret ={isW : false, isR:false};
+                CmpxLib.each(bindAttrs, function (item) {
+                    let writeFn = function () {
+                        item.newValue = bind[item.attrName];
+                        if (item.value != item.newValue) {
+                            ret.isW = true;
+                            item.value = item.newValue;
+                            item.content.write.call(componet, item.newValue);
+                            componet.$updateAsync();
+                        }
+                    };
+                    if (item.isRead) {
+                        item.newValue = item.isObj ? item.content.read.call(componet)
+                            : bind[item.attrName];
+                        if (item.value != item.newValue) {
+                            ret.isR = true;
+                            item.value = item.newValue;
+                            bind[item.attrName] = item.value;
+                            item.attrDef.setAttribute(element, item.name, item.value, item.subName, compileInfo);
                         } else
                             writeFn();
-                    } else if (isWrite)
+                    } else if (item.isWrite)
                         writeFn();
-                }
-            });
-        } else {
-            vmAttr.content(content);
-            vmAttr.onRead();
-        }
+
+                });
+                return ret;
+            };
+
+        bind[bindAttrName] = _undef;
         subject.subscribe({
             update: function (p: ISubscribeEvent) {
-                vmAttr.onUpdate();
+                //bind.onRead();
+                let ret = update();
+                ret.isR && bind.onRead();
+                ret.isW && bind.onWrite();
+                ret.isR && ret.isW && update();
+                bind.onUpdate();
             },
-            ready:function(){
-                vmAttr.onReady();
+            ready: function () {
+                bind.onReady();
             },
             remove: function (p: ISubscribeEvent) {
-                vmAttr.$isDisposed = true;
-                vmAttr.onDispose();
-                if (vmAttrEvents) {
-                    CmpxLib.each(vmEvents, function (item) {
+                bind.$isDisposed = true;
+                bind.onDispose();
+                if (bindEvents) {
+                    CmpxLib.each(events, function (item) {
                         HtmlDef.getHtmlEventDef(item.name).removeEventListener(element, item.name, item.fn, false);
                     });
                 }
@@ -1032,7 +1072,7 @@ export class Compile {
         dataFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         eachFn: (item: any, count: number, index: number, componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject,
-        syncFn:(item: any, count: number, index: number, newList:any[])=>number
+        syncFn: (item: any, count: number, index: number, newList: any[]) => number
     ): void {
 
         if (subject.isRemove || !dataFn || !eachFn) return;
@@ -1041,17 +1081,17 @@ export class Compile {
 
         let value: any, newSubject: CompileSubject;
         let childNodes: Node[],
-            syncDatas:any[],
+            syncDatas: any[],
             removeFn = function () {
                 childNodes = _removeChildNodes(childNodes);
             },
-            detachFr:DocumentFragment;
+            detachFr: DocumentFragment;
         subject.subscribe({
-            detach:function(){
-                if (syncFn){
-                    if (subject.isDetach){
+            detach: function () {
+                if (syncFn) {
+                    if (subject.isDetach) {
                         let nodes = [];
-                        CmpxLib.each(syncDatas, function(item){
+                        CmpxLib.each(syncDatas, function (item) {
                             nodes = nodes.concat(item.nodes);
                         });
                         detachFr = _detachElement(nodes);
@@ -1060,7 +1100,7 @@ export class Compile {
                         detachFr && _insertAfter(detachFr, refNode, _getParentElement(refNode));
                     }
                 } else {
-                    if (subject.isDetach){
+                    if (subject.isDetach) {
                         detachFr = _detachElement(childNodes);
                     } else {
                         detachFr && _insertAfter(detachFr, refNode, _getParentElement(refNode));
@@ -1075,25 +1115,25 @@ export class Compile {
                     let isArray = CmpxLib.isArray(datas);
 
                     //如果有数据
-                    if (datas){
+                    if (datas) {
                         //如果不是数组，转为一个数组
                         isArray || (datas = [datas]);
 
                         let count = datas.length;
 
-                        if (syncFn){
+                        if (syncFn) {
                             //同步模式，同步性生成view
-                            let lastNode:Node = refNode;
+                            let lastNode: Node = refNode;
 
                             let rmList = [],    //要删除的数据
                                 dataList = [];  //合并后的数据
-                            (function(oldDatas, newDatas){
+                            (function (oldDatas, newDatas) {
                                 let hasList = [], nIdx;
                                 //计算要删除的数据和保留的数据
-                                CmpxLib.each(oldDatas, function(item, index){
+                                CmpxLib.each(oldDatas, function (item, index) {
                                     //在新数据的位置
                                     nIdx = syncFn.call(componet, item.data, count, index, datas);
-                                    if (nIdx >=0 ){
+                                    if (nIdx >= 0) {
                                         item.data = newDatas[nIdx];
                                         item.newIndex = nIdx;
                                         hasList.push(item);
@@ -1101,24 +1141,24 @@ export class Compile {
                                         rmList.push(item);
                                 });
                                 //新数据与保留数据合并
-                                CmpxLib.each(newDatas, function(item, index){
+                                CmpxLib.each(newDatas, function (item, index) {
                                     //在保留数据里的位置
-                                    nIdx = CmpxLib.inArray(hasList, function(item){ return item.newIndex == index; });
-                                    if (nIdx >= 0){
+                                    nIdx = CmpxLib.inArray(hasList, function (item) { return item.newIndex == index; });
+                                    if (nIdx >= 0) {
                                         //保留数据，已有数据
                                         dataList.push(hasList[nIdx]);
                                     } else {
                                         //新数据, 没有fn属性
                                         dataList.push({
-                                            index:index,
-                                            data:item
+                                            index: index,
+                                            data: item
                                         });
                                     }
                                 });
                             })(syncDatas, datas);
                             syncDatas = dataList;
                             //删除多余节点(Node)
-                            CmpxLib.each(rmList, function(item){
+                            CmpxLib.each(rmList, function (item) {
                                 item.nodes = _removeChildNodes(item.nodes);
                                 item.subject.remove({
                                     componet: componet
@@ -1127,12 +1167,12 @@ export class Compile {
                             });
                             let lastIndex = -1;
                             CmpxLib.each(syncDatas, function (item, index) {
-                                let fragm:DocumentFragment;
+                                let fragm: DocumentFragment;
 
-                                if (item.fn){
+                                if (item.fn) {
                                     //根据fn数据来确认保留数据
 
-                                    if (item.index < lastIndex){
+                                    if (item.index < lastIndex) {
                                         //根据原有index，如果大过上一个从中保留数据的原有index,移动原来的node
 
                                         lastIndex = item.index;
@@ -1159,7 +1199,7 @@ export class Compile {
                                     item.index = index;
 
                                 } else {
-                                //如果不存在，新建
+                                    //如果不存在，新建
 
                                     let st = item.subject = new CompileSubject(subject);
                                     fragm = document.createDocumentFragment();
@@ -1171,14 +1211,14 @@ export class Compile {
                                     _insertAfter(fragm, lastNode, _getParentElement(lastNode));
                                 }
                                 //设置新的loasNode，用于插入位置
-                                lastNode = item.nodes[item.nodes.length-1] ||  lastNode;
+                                lastNode = item.nodes[item.nodes.length - 1] || lastNode;
 
                             });
 
                         } else {
                             //普通模式, 一次性全部重新生成view
                             let fragment = document.createDocumentFragment();
-                            
+
                             removeFn();
                             newSubject && newSubject.remove({
                                 componet: componet
@@ -1212,10 +1252,10 @@ export class Compile {
         });
     }
 
-    public static updateRender(fn:Function, componet: Componet, element: HTMLElement, subject: CompileSubject):void{
+    public static updateRender(fn: Function, componet: Componet, element: HTMLElement, subject: CompileSubject): void {
         subject.subscribe({
-            update:function(){
-               fn.call(componet);
+            update: function () {
+                fn.call(componet);
             }
         });
     };
@@ -1224,7 +1264,7 @@ export class Compile {
         ifFun: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         trueFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
         falseFn: (componet: Componet, element: HTMLElement, subject: CompileSubject) => any,
-        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, isX:boolean
+        componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, isX: boolean
     ): void {
 
         if (subject.isRemove) return;
@@ -1232,23 +1272,23 @@ export class Compile {
         let refNode = _getRefNode(parentElement),
             value, newSubject: CompileSubject,
             childNodes: Node[], removeFn = function () {
-               isX || (childNodes = _removeChildNodes(childNodes));
+                isX || (childNodes = _removeChildNodes(childNodes));
             };
-        let fragment:DocumentFragment;
+        let fragment: DocumentFragment;
 
-        let trueFragment:DocumentFragment, trueSubject:CompileSubject, trueNodes:Node[],
-            falseFragment:DocumentFragment, falseSubject:CompileSubject, falseNodes:Node[]
+        let trueFragment: DocumentFragment, trueSubject: CompileSubject, trueNodes: Node[],
+            falseFragment: DocumentFragment, falseSubject: CompileSubject, falseNodes: Node[]
         subject.subscribe({
-            detach:function(){
-                if (isX){
-                    if (subject.isDetach){
+            detach: function () {
+                if (isX) {
+                    if (subject.isDetach) {
                         fragment = _detachElement(value ? trueNodes : falseNodes);
                     } else {
                         _insertAfter(fragment, refNode, _getParentElement(refNode));
                         fragment = null;
                     }
-                } else{
-                    if (subject.isDetach){
+                } else {
+                    if (subject.isDetach) {
                         fragment = _detachElement(childNodes);
                     } else {
                         _insertAfter(fragment, refNode, _getParentElement(refNode));
@@ -1262,16 +1302,16 @@ export class Compile {
                 if (newValue != value) {
                     value = newValue;
 
-                    if (isX){
+                    if (isX) {
                         if (newValue) {
                             falseNodes && (falseFragment = _detachElement(falseNodes));
                             falseSubject && falseSubject.detach({
-                                componet:componet
+                                componet: componet
                             });
-                            if (trueFragment){
+                            if (trueFragment) {
                                 fragment = trueFragment;
                                 trueSubject.detach({
-                                    componet:componet
+                                    componet: componet
                                 });
                             }
                             else {
@@ -1285,12 +1325,12 @@ export class Compile {
                         else {
                             trueNodes && (trueFragment = _detachElement(trueNodes));
                             trueSubject && trueSubject.detach({
-                                componet:componet
+                                componet: componet
                             });
-                            if (falseFragment){
+                            if (falseFragment) {
                                 fragment = falseFragment;
                                 falseSubject.detach({
-                                    componet:componet
+                                    componet: componet
                                 });
                             }
                             else {
@@ -1348,17 +1388,17 @@ export class Compile {
         tmpls || (tmpls = componet[_tmplName] = {});
 
         tmpls[id] = function (componet: Componet, element: HTMLElement, subject: CompileSubject, param: any) {
-            if ($componet != componet){
+            if ($componet != componet) {
                 //如果tmpl在不同的component, 将this为当前域，夸域处理
                 subject = new CompileSubject(subject);
                 let pSubject = $componet.$subject,
-                    subsP:ISubscribeParam = pSubject.subscribe({
-                        update:function(p:ISubscribeEvent){
+                    subsP: ISubscribeParam = pSubject.subscribe({
+                        update: function (p: ISubscribeEvent) {
                             subject.update(p);
                         }
                     });
                 subject.subscribe({
-                    remove:function(){
+                    remove: function () {
                         subsP && pSubject.unSubscribe(subsP);
                     }
                 });
@@ -1367,21 +1407,21 @@ export class Compile {
         };
     }
 
-    public static includeRender(context: any, contextFn:Function, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
+    public static includeRender(context: any, contextFn: Function, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
         if (!context || subject.isRemove) return;
 
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
-            if (tmpl){
+            if (tmpl) {
                 let pTmep = (param && param.call(componet)) || {};
                 param && subject.subscribe({
-                    update:function(){
-                        CmpxLib.extend(pTmep,  param.call(componet));
+                    update: function () {
+                        CmpxLib.extend(pTmep, param.call(componet));
                     }
                 });
                 if (tmpl)
                     tmpl(componet, parentElement, subject, pTmep);
-                else if (contextFn){
+                else if (contextFn) {
                     contextFn.call(componet, componet, parentElement, subject, pTmep);
                 }
             }
@@ -1408,7 +1448,7 @@ export class Compile {
 
                     } else
                         preSubject.update({
-                            componet:preComponet
+                            componet: preComponet
                         });
                 },
                 remove: function (p: ISubscribeEvent) {
@@ -1418,10 +1458,10 @@ export class Compile {
         }
     }
 
-    static renderComponet(componetDef: any, refNode: Node, attrs:ICreateElementAttr[],
+    static renderComponet(componetDef: any, refNode: Node, attrs: ICreateElementAttr[],
         complieEnd?: (newSubject: CompileSubject, refComponet: Componet) => void,
         parentComponet?: Componet, subject?: CompileSubject,
-        contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet:boolean) => void): void {
+        contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) => void): void {
 
         _tmplLoaded(function () {
             let vm = _getVmByComponetDef(componetDef),
@@ -1435,20 +1475,20 @@ export class Compile {
 }
 
 var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
-        var outList = [], varNameList = [];
+    var outList = [], varNameList = [];
 
-        _buildCompileFnContent(tagInfos, outList, varNameList, true);
+    _buildCompileFnContent(tagInfos, outList, varNameList, true);
 
-        varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
-        outList.unshift(`var __tmplRender = Compile.tmplRender,
+    varNameList.length > 0 && outList.unshift('var ' + varNameList.join(',') + ';');
+    outList.unshift(`var __tmplRender = Compile.tmplRender,
         __setAttributeEx = Compile.setAttributeEx, __createElementEx = Compile.createElementEx,
         __createTextNode = Compile.createTextNode, __setViewvar = Compile.setViewvar,
         __forRender = Compile.forRender, __ifRender = Compile.ifRender,
         __includeRender = Compile.includeRender, __updateRender = Compile.updateRender,
         __componet = componet;`);
 
-        return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
-    },
+    return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
+},
     _buildCpFnRetRmRegex = /\s*\=\s*\[\s*\]\s*$/,
     _escapeStringRegex = /([\"\\])/gm,
     _escapeBuildString = function (s: string): string {
@@ -1478,7 +1518,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         let names: string[];
         CmpxLib.each(attrs, function (attr: IAttrInfo, index: number) {
             names = _makeSubName(attr.name);
-            outList.push('__setAttributeEx(element, "' + names[0] + '", "' + names[1] + '", ' + attr.bindInfo.content + ', componet, subject, isComponet);');
+            outList.push('__setAttributeEx(element, "' + names[0] + '", "' + names[1] + '", ' + attr.bindInfo.content + ', componet, subject, isComponet, binds);');
         });
     },
     _getViewvarName = function (attrs: Array<IAttrInfo>): { item: string, list: string } {
@@ -1508,12 +1548,12 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
     },
     _buildCompileFnForVar = function (itemName: string, outList: string[]) {
         let str = ['var ', itemName, '_index, ', itemName, '_count, $last, ', itemName, '_last, $first, ', itemName, '_first, $odd, ', itemName, '_odd, $even, ', itemName, '_even,\n',
-                'setForVar = function (item, count, index) {\n',
-                '$index = ', itemName, '_index = index, $count = ', itemName, '_count = count;\n',
-                '$last = ', itemName, '_last = (count - index == 1), $first = ', itemName, '_first = (index == 0), $odd = ', itemName, '_odd = (index % 2 == 0), $even = ', itemName, '_even = !$odd;\n',
-                '};\n',
-                'setForVar.call(componet, item, $count, $index);'
-            ].join('');
+            'setForVar = function (item, count, index) {\n',
+            '$index = ', itemName, '_index = index, $count = ', itemName, '_count = count;\n',
+            '$last = ', itemName, '_last = (count - index == 1), $first = ', itemName, '_first = (index == 0), $odd = ', itemName, '_odd = (index % 2 == 0), $even = ', itemName, '_even = !$odd;\n',
+            '};\n',
+            'setForVar.call(componet, item, $count, $index);'
+        ].join('');
         outList.push(str);
     },
     _buildCompileFnContent = function (tagInfos: Array<ITagInfo>, outList: Array<string>, varNameList: string[], preInsert: boolean, inclue?: string[]) {
@@ -1540,13 +1580,13 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                     if (hasAttr || hasChild || varName) {
 
                         let { bindAttrs, stAtts } = _makeElementTag(tagName, tag.attrs);
-                        outList.push('__createElementEx("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet) {');
+                        outList.push('__createElementEx("' + tagName + '", ' + JSON.stringify(stAtts) + ', componet, element, subject, function (componet, element, subject, isComponet, binds) {');
                         if (varName) {
                             outList.push('__setViewvar(function(){');
                             varName.item && outList.push(varName.item + ' = this;');
                             varName.list && outList.push(varName.list + '.push(this);');
-                            varName.item && outList.push('return {name:"'+varName.item+'", value:'+varName.item+'}');
-                            varName.list && outList.push('return {name:"'+varName.list+'", value:'+varName.list+'}');
+                            varName.item && outList.push('return {name:"' + varName.item + '", value:' + varName.item + '}');
+                            varName.list && outList.push('return {name:"' + varName.list + '", value:' + varName.list + '}');
                             outList.push('}, function(){');
                             varName.item && outList.push(varName.item + ' = null;');
                             varName.list && outList.push('var idx = ' + varName.list + '.indexOf(this); idx >= 0 && ' + varName.list + '.splice(idx, 1);');
@@ -1571,7 +1611,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                 switch (tagName) {
                     case 'for':
                     case 'forx':
-                        let isForX = (tagName=='forx'),
+                        let isForX = (tagName == 'forx'),
                             extend = tag.attrs[0].extend,
                             itemName = extend.item,
                             fSync = extend.sync
@@ -1587,19 +1627,19 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         outList.push('return setForVar;');
 
                         let fSyFn = 'null';
-                        if (isForX || extend.sync){
+                        if (isForX || extend.sync) {
                             let syncCT = extend.syncCT;
                             //function(item, count, index, newList)=>返回index表示已存在的位置，-1表示不存在;
-                            fSyFn = syncCT ? 'function(){ var fn = '+syncCT+'; return fn ? fn.apply(this, arguments) : -1; }'
+                            fSyFn = syncCT ? 'function(){ var fn = ' + syncCT + '; return fn ? fn.apply(this, arguments) : -1; }'
                                 : 'function(item, count, index, newList){ return newList ? newList.indexOf(item) : -1; }'
                         }
 
-                        outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, '+fSyFn+');');
+                        outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + fSyFn + ');');
                         preInsert = true;
                         break;
                     case 'if':
                     case 'ifx':
-                        let isX = (tagName=='ifx'), ifFn = function (ifTag) {
+                        let isX = (tagName == 'ifx'), ifFn = function (ifTag) {
                             let ifChild = ifTag.children,
                                 hasElse = ifChild ? ifChild[ifChild.length - 1].tagName == 'else' : false,
                                 elseTag = hasElse ? ifChild.pop() : null;
@@ -1612,7 +1652,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                                 ifFn(elseTag);
                                 //_buildCompileFnContent(elseTag.children, outList, varNameList, preInsert);
                             }
-                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, '+(isX?'true':'false')+');');
+                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + (isX ? 'true' : 'false') + ');');
                         };
                         ifFn(tag);
 
@@ -1628,7 +1668,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                         incRender && (incRender = 'function(){ return ' + incRender.value + '}');
                         let context = incRender ? incRender : ('"' + (incTmpl ? _escapeBuildString(incTmpl.value) : '') + '"');
 
-                        if (hasIncChild){
+                        if (hasIncChild) {
                             outList.push('__includeRender(' + context + ', function (componet, element, subject) {');
                             _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
                             outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject,  ' + incParam + ');');
