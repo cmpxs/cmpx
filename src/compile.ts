@@ -9,10 +9,9 @@ export interface IVMBindConfig {
     name: string
 }
 
-var _binds = {},
-    _bindCfgName = '__bindConfig',
-    _getBindDef = function (name): typeof Bind {
-        return _binds[name];
+var _getBindDef = function (target:any, name:string): typeof Bind {
+        let context = VMManager.getBind(target, name);
+        return context ? context.def : null;
     };
 
 /**
@@ -21,7 +20,14 @@ var _binds = {},
  */
 export function VMBind(config: IVMBindConfig) {
     return function (constructor: typeof Bind) {
-        _binds[config.name] = constructor;
+        let target = constructor.prototype,
+            context = {
+                name:config.name,
+                type:'Bind',
+                def:constructor
+            };
+        VMManager.setConfig(target, config);
+        VMManager.include(target, context, null);
     };
 }
 
@@ -194,8 +200,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                     end: end,
                     single: single,
                     index: index,
-                    htmlTagDef: htmlTagDef//,
-                    //componet: cmd ? false : !!_registerVM[tagName]
+                    htmlTagDef: htmlTagDef
                 };
                 list.push(item);
             }
@@ -352,6 +357,116 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         return index;
     };
 
+export interface IVMContext {
+    name:string;
+    type:string;
+    [prop:string]:any;
+}
+
+let _vmName = "__vm__", _vmConfigName = 'config',
+    _vmContextName = 'context', _vmOtherName = 'other';
+export class VMManager {
+
+    /**
+     * VM 内容
+     * @param target 
+     * @param name 
+     * @param context 
+     */
+    static setVM(target:any, name:string, context:any): any {
+        let vm = target[_vmName] || (target[_vmName] = {});
+        return vm[name] = context;
+    }
+
+    static getVM(target:any, name:string): any {
+        let vm = target[_vmName];
+        return vm && vm[name];
+    }
+
+    static include(target:any, context:IVMContext, include:any[], parent?:any):any{
+        let obj = {
+            parent:null,
+            context:context,
+            componets:{},
+            binds:{}
+        }, temp:IVMContext;
+
+        var a:Function;
+
+        CmpxLib.each(include, function(item){
+            temp = this.getContext(item.prototype);
+            if (temp){
+                switch(temp.type){
+                    case 'Componet':
+                        obj.componets[temp.name] = temp;
+                        break;
+                    case 'Bind':
+                        obj.binds[temp.name] = temp;
+                        break;
+                }
+            }
+        }, this);
+        return this.setVM(target, _vmContextName, obj);
+    }
+
+    private static getContext(target:any): IVMContext {
+        let obj = this.getVM(target, _vmContextName);
+        return obj && obj.context;
+    }
+
+    private static getContextEx(target:any, type:string, name:string): IVMContext {
+        let obj = this.getVM(target, _vmContextName);
+        let items = obj && obj[type],
+            cp = items && items[name];
+        return cp || (obj.parent && this.getContextEx(obj.parent, type, name));
+    }
+
+    static getComponet(target:any, name?:string):IVMContext{
+        return name ? this.getContextEx(target, 'componets', name)
+            : this.getContext(target);
+    }
+
+    static getBind(target:any, name?:string):IVMContext{
+        return name ? this.getContextEx(target, 'binds', name)
+            : this.getContext(target);
+    }
+
+    /**
+     * 配置
+     * @param target 
+     * @param config 
+     */
+    static setConfig(target:any, config:any): any{
+        return this.setVM(target, _vmConfigName, config);
+    }
+
+    static getConfig(target:any): any{
+        return this.getVM(target, _vmConfigName);
+    }
+
+    // private static getContext(target:any): any{
+    //     return this.getVM(target, _vmContextName);
+    // }
+
+    // /**
+    //  * 其它
+    //  * @param target 
+    //  * @param name 
+    //  * @param context 
+    //  */
+    // static setOther(target:any, name:string, context:any){
+    //     return this.setVM(target, _vmOtherName, context);
+    // }
+
+    // static getOter(target:any, name:string): any{
+    //     return this.getVM(target, _vmOtherName);
+    // }
+
+    static getTarget(p:any, t:any):any{
+        return (p instanceof t ? p : p.prototype);
+    }
+
+}
 
 export interface IVMConfig {
     //标签名称
@@ -368,72 +483,69 @@ export interface IVMConfig {
     styleUrl?: string | Function;
 }
 
-interface IVM {
+interface IVM extends IVMContext {
     render: CompileRender;
-    componetDef: Function;
+    componetDef: typeof Componet;
     vm?: IVMConfig;
 }
 
-var _registerVM: { [selector: string]: IVM } = {},
-    _vmName = '__vm__',
-    _getVmConfig = function (componetDef: any): IVMConfig {
-        return (componetDef instanceof Componet ? componetDef : componetDef.prototype)[_vmName];
-    },
-    _getVmByComponetDef = function (componetDef: any): { render: CompileRender, componetDef: Function } {
-        var config = _getVmConfig(componetDef);
-        return config ? _registerVM[config.name] : null;
-    },
-    _readyRd = false,
+var _readyRd = false,
     _renderPR = [];
 
 /**
  * 注入组件配置信息
- * @param vm 
+ * @param config 
  */
-export function VMComponet(vm: IVMConfig) {
+export function VMComponet(config: IVMConfig) {
     return function (constructor: Function) {
-        _registerVM[vm.name] = {
-            render: null,
-            vm: vm,
-            componetDef: constructor
-        };
+        let name = config.name,
+            target = constructor.prototype,
+            context = {
+                name:name,
+                type:'Componet',
+                render: null,
+                vm: config,
+                componetDef: constructor
+            };
+        target.$name = config.name;
+        VMManager.setConfig(target, config);
+        //target[_vmName] = config;
+        //VMManager.setContext(target, context);
+        VMManager.include(target, context, config.include);
         var rdF = function () {
-            //_registerVM[vm.name].render = new CompileRender(vm.tmpl, constructor);
             let head = document.head;
 
-            if (vm.styleUrl && !CmpxLib.isString(vm.styleUrl)) {
-                vm.style = (vm.styleUrl as Function)();
-                vm.styleUrl = null;
+            if (config.styleUrl && !CmpxLib.isString(config.styleUrl)) {
+                config.style = (config.styleUrl as Function)();
+                config.styleUrl = null;
             }
-            if (vm.style) {
-                if (!CmpxLib.isString(vm.style))
-                    vm.style = (vm.style as Function)();
+            if (config.style) {
+                if (!CmpxLib.isString(config.style))
+                    config.style = (config.style as Function)();
                 head.appendChild(HtmlDef.getHtmlTagDef('style').createElement('style', [{
                     name: 'type', value: 'text/css'
-                }], head, vm.style as string));
+                }], head, config.style as string));
             }
-            if (vm.styleUrl) {
+            if (config.styleUrl) {
                 head.appendChild(HtmlDef.getHtmlTagDef('link').createElement('link', [{
                     name: 'rel', value: 'stylesheet'
                 }, {
-                    name: 'href', value: vm.styleUrl as string
+                    name: 'href', value: config.styleUrl as string
                 }], head));
             }
             //优先tmplUrl
-            let tmplUrl: any = vm.tmplUrl;
+            let tmplUrl: any = config.tmplUrl;
             if (CmpxLib.isString(tmplUrl) && _loadTmplFn) {
                 _tmplCount++;
                 _loadTmplFn(tmplUrl, function (tmpl: string | Function) {
-                    _registerVM[vm.name].render = new CompileRender(tmpl || vm.tmpl || '', constructor);
+                    context.render = new CompileRender(tmpl || config.tmpl || '', constructor);
                     _tmplCount--;
                     _tmplChk();
                 });
             } else
-                _registerVM[vm.name].render = new CompileRender(tmplUrl || vm.tmpl || '', constructor);
+                context.render = new CompileRender(tmplUrl || config.tmpl || '', constructor);
         };
         _readyRd ? rdF() : _renderPR.push(rdF);
-        constructor.prototype.$name = vm.name;
-        constructor.prototype[_vmName] = vm;
     };
 }
 
@@ -548,7 +660,7 @@ export class CompileRender {
     constructor(context: any, componetDef?: Componet | Function, param?: Object) {
         if (context instanceof Componet) {
             this.componetDef = context;
-            let vm = _getVmByComponetDef(context),
+            let vm = VMManager.getComponet(context) as IVM,
                 render = vm && vm.render;
             this.contextFn = render.contextFn;
         } else {
@@ -725,7 +837,7 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        if (_registerVM[name]) {
+        if (VMManager.getComponet(componet, name)) {
             Compile.createComponet.apply(this, arguments);
         } else {
             Compile.createElement.apply(this, arguments);
@@ -747,7 +859,7 @@ export class Compile {
         };
         CmpxLib.each(attrs, function (item: ICreateElementAttr) {
             attrName = item.name;
-            bindDef = _getBindDef(attrName);
+            bindDef = _getBindDef(componet, attrName);
             if (bindDef) {
                 bind = new bindDef(element);
                 bindList.push(bind);
@@ -761,7 +873,7 @@ export class Compile {
             attrList.push(item);
         });
         bindAttrs &&　CmpxLib.each(bindAttrs.split(','), function(item){
-            bindDef = _getBindDef(item);
+            bindDef = _getBindDef(componet, item);
             if (bindDef) {
                 bind = new bindDef(element);
                 bindList.push(bind);
@@ -790,11 +902,11 @@ export class Compile {
     ): void {
         if (subject.isRemove) return;
 
-        let vm: IVM = _registerVM[name],
-            componetDef: any = vm.componetDef,
+        let vm: IVM = VMManager.getComponet(componet, name) as IVM,
+            componetDef = vm.componetDef,
             refNode = _getRefNode(parentElement);
 
-        Compile.renderComponet(componetDef, refNode, attrs, function (subject, componet: Componet) {
+            Compile.renderComponet(componetDef, refNode, attrs, function (subject, componet: Componet) {
         }, componet, subject, contextFn);
 
     }
@@ -1471,13 +1583,13 @@ export class Compile {
         }
     }
 
-    static renderComponet(componetDef: any, refNode: Node, attrs: ICreateElementAttr[],
+    static renderComponet(componetDef: typeof Componet, refNode: Node, attrs: ICreateElementAttr[],
         complieEnd?: (newSubject: CompileSubject, refComponet: Componet) => void,
         parentComponet?: Componet, subject?: CompileSubject,
         contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) => void): void {
 
         _tmplLoaded(function () {
-            let vm = _getVmByComponetDef(componetDef),
+            let vm = VMManager.getComponet(componetDef.prototype),
                 render = vm && vm.render;
             if (!vm) throw new Error('not find @VM default!');
             let { newSubject, refComponet } = render.complie(refNode, attrs, parentComponet, subject, contextFn, { update: true });
