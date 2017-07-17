@@ -367,6 +367,8 @@ let _vmName = "__vm__", _vmConfigName = 'config',
     _vmContextName = 'context', _vmOtherName = 'other';
 export class VMManager {
 
+    static parent:(target:any, context:IVMContext)=>any;
+
     /**
      * VM 内容
      * @param target 
@@ -417,8 +419,12 @@ export class VMManager {
     private static getContextEx(target:any, type:string, name:string): IVMContext {
         let obj = this.getVM(target, _vmContextName);
         let items = obj && obj[type],
-            cp = items && items[name];
-        return cp || (obj.parent && this.getContextEx(obj.parent, type, name));
+            cp = items && items[name],
+            parent;
+        if (!cp && this.parent && obj.context){
+            parent = this.parent(target, obj.context);
+        }
+        return cp || (parent && this.getContextEx(parent, type, name));
     }
 
     static getComponet(target:any, name?:string):IVMContext{
