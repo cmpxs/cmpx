@@ -857,7 +857,10 @@ export class Compile {
 
         if (subject.isRemove) return;
 
-        let attrList = [], bindList = [], binds = {}, vmAttrs, bindDef, bind, attrName;
+        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrs, parentElement, content, { subject: subject, componet: componet });
+
+        let attrList = [], bindList = [], binds = {}, vmAttrs, bindDef, bind, attrName,
+            values = {};
         let makeAttrs = function (binds, bind, attrs) {
             CmpxLib.eachProp(attrs, function (item, n) {
                 binds[n] = { bind: bind, attr: item, done: false };
@@ -875,7 +878,7 @@ export class Compile {
                 bind['$componet'] = componet;
                 makeAttrs(binds, bind, vmAttrs);
             }
-            binds[attrName] && (binds[attrName].value = item.value);
+            values[attrName] = item.value;
             attrList.push(item);
         });
         bindAttrs &&　CmpxLib.each(bindAttrs.split(','), function(item){
@@ -891,11 +894,10 @@ export class Compile {
             }
         });
 
-        let element: HTMLElement = HtmlDef.getHtmlTagDef(name).createElement(name, attrList, parentElement, content, { subject: subject, componet: componet });
         parentElement.appendChild(element);
         contextFn && contextFn(componet, element, subject, false, bind && binds);
         bind && CmpxLib.eachProp(binds, function (item, n) {
-            Compile.setBindAttribute(element, n, '', item.value, componet, subject, false, binds);
+            Compile.setBindAttribute(element, n, '', values[n], componet, subject, false, binds);
         });
         bindList.length > 0 && CmpxLib.each(bindList, function (item) {
             Compile.setBind(element, componet, subject, item);
