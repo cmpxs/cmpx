@@ -185,6 +185,15 @@ export class CmpxLib {
         if ((++_tick) > 100000) _tick=0;
         return [t, _tick].join('_');
     }
+
+    /**
+     * 是否类
+     * @param p 参数
+     * @param cls 类
+     */
+    static isClass(p, cls){
+        return p ? (p == cls || (p.prototype && p.prototype instanceof cls)) : false;
+    }
 }
 
 let _tick = 0;
