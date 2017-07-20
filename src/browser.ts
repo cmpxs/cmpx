@@ -1,6 +1,6 @@
 import { Platform } from './platform';
 import { Componet } from './componet';
-import { Compile} from './compile';
+import { Compile, VMManager } from './compile';
 import { HtmlDef, HtmlTagDef, ICreateElementAttr, DEFULE_TAG, DEFAULT_ATTR, DEFAULT_ATTR_PROP, DEFAULT_EVENT_DEF, SINGLE_TAG } from './htmlDef';
 import { CmpxLib } from './cmpxLib';
 import { CompileSubject } from './compileSubject';
@@ -107,11 +107,11 @@ export class Browser extends Platform {
         _htmlConfig();
     }
 
-    boot(componetDef: any, callback?:(componet: Componet, subject: CompileSubject)=>void): Browser {
+    boot(componetDef: Componet | typeof Componet, callback?:(componet: Componet, subject: CompileSubject)=>void): Browser {
         //编译器启动，用于htmlDef配置后
         Compile.startUp();
 
-        let name = componetDef.prototype.$name,
+        let name = VMManager.getTarget(componetDef, Componet).$name,
             bootElement: HTMLElement = document.getElementsByTagName(name)[0];
         if (!bootElement)
             throw new Error(`没有${name}标签`);

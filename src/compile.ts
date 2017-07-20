@@ -1613,15 +1613,16 @@ export class Compile {
         }
     }
 
-    static renderComponet(componetDef: typeof Componet, refNode: Node, attrs: ICreateElementAttr[],
+    static renderComponet(componetDef: Componet | typeof Componet, refNode: Node, attrs: ICreateElementAttr[],
         complieEnd?: (newSubject: CompileSubject, refComponet: Componet) => void,
         parentComponet?: Componet, subject?: CompileSubject,
         contextFn?: (component: Componet, element: HTMLElement, subject: CompileSubject, isComponet: boolean) => void): void {
 
         _tmplLoaded(function () {
-            let vm = VMManager.getComponet(componetDef.prototype),
-                render = vm && vm.render;
-            if (!vm) throw new Error('not find @VM default!');
+            let isComponet = componetDef instanceof Componet,
+                vm = isComponet ? null : VMManager.getComponet(VMManager.getTarget(componetDef, Componet)),
+                render =isComponet ? new CompileRender(componetDef) : (vm && vm.render);
+            if (!render) throw new Error('not find VM default!');
             let { newSubject, refComponet } = render.complie(refNode, attrs, parentComponet, subject, contextFn, { update: true });
             complieEnd && complieEnd.call(refComponet, newSubject, refComponet);
         });
