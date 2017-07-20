@@ -627,6 +627,28 @@ let _tmplName = '__tmpl__',
 
         return array1.length == array2.length && _equalArrayIn(array1, array2);
     },
+    _equalObject = function (obj1, obj2) {
+        if (obj1 == obj2) return true;
+        if (!CmpxLib.isObject(obj2)) return false;
+
+        var count = 0, ok = true;
+        CmpxLib.eachProp(obj1, function (item, n) {
+            count++;
+            if (obj2[n] !== item) { ok = false; return false; }
+        });
+        ok && CmpxLib.eachProp(obj2, function () {
+            count--;
+        });
+        return ok && (count === 0);
+    },
+    _equals = function(p, p1){
+        if (CmpxLib.isArray(p))
+            return _equalArray(p, p1);
+        else if (CmpxLib.isObject(p))
+            return _equalObject(p, p1);
+        else
+            return p == p1;
+    },
     _getParentElement = HtmlDef.getParentElement,
     _removeChildNodes = function (childNodes: Node[]) {
         if (childNodes && childNodes.length > 0) {
@@ -986,7 +1008,7 @@ export class Compile {
                     updateFn = function (p: ISubscribeEvent) {
                         if (isRead) {
                             newValue = content.read.call(parent);
-                            if (value != newValue) {
+                            if (!_equals(value, newValue)) {
                                 value = newValue;
                                 componet[name] = value;
                                 componet.$updateAsync();
@@ -1024,7 +1046,7 @@ export class Compile {
             update: function (p: ISubscribeEvent) {
                 if (!once && readFn) {
                     var newValue = readFn.call(componet);
-                    if (value != newValue) {
+                    if (!_equals(value, newValue)) {
                         value = newValue;
                         textNode[('textContent' in textNode) ? 'textContent' : 'nodeValue'] = newValue;
                     }
@@ -1063,7 +1085,7 @@ export class Compile {
                     isRead: boolean = !!content.read,
                     writeFn = function () {
                         newValue = attrDef.getAttribute(element, name, '', compileInfo);
-                        if (value != newValue) {
+                        if (!_equals(value, newValue)) {
                             value = newValue;
                             content.write.call(componet, newValue);
                             componet.$updateAsync();
@@ -1083,7 +1105,7 @@ export class Compile {
                     update: function (p: ISubscribeEvent) {
                         if (isRead) {
                             newValue = content.read.call(componet);
-                            if (value != newValue) {
+                            if (!_equals(value, newValue)) {
                                 value = newValue;
                                 attrDef.setAttribute(element, name, value, subName, compileInfo);
                             }
@@ -1159,7 +1181,7 @@ export class Compile {
                     if (item.isRead) {
                         item.newValue = item.isObj ? item.content.read.call(componet)
                             : bind[item.attrName];
-                        if (item.value != item.newValue) {
+                        if (!_equals(item.value, item.newValue)) {
                             isR = true;
                             item.value = item.newValue;
                             bind[item.attrName] = item.value;

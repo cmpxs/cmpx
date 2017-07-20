@@ -179,4 +179,12 @@ export class CmpxLib {
         }
         return obj;
     }
+
+    static makeAutoId(){
+        var t = new Date().valueOf();
+        if ((++_tick) > 100000) _tick=0;
+        return [t, _tick].join('_');
+    }
 }
+
+let _tick = 0;
