@@ -5,6 +5,8 @@ import { CmpxEvent } from './cmpxEvent';
 import { CompileSubject, ISubscribeEvent, ISubscribeParam } from './compileSubject';
 import { Bind } from './bind';
 
+var _undef: any;
+
 export interface IVMBindConfig {
     name: string
 }
@@ -31,18 +33,18 @@ export function VMBind(config: IVMBindConfig) {
     };
 }
 
-var _attrEventName = '__attrEventName',
+var _attrEventName = 'events',
     _getBindEvents = function (bind: Bind) {
-        return bind[_attrEventName];
+        return VMManager.getVM(bind, _attrEventName);
     };
 /**
- * 引用模板变量$var
+ * 引用模板事件
  * @param name 变量名称，未指定为属性名称
  */
 export function VMEvent(name?: string) {
     return function (bind: Bind, propKey: string) {
         name || (name = propKey);
-        var events = (bind[_attrEventName] || (bind[_attrEventName] = []));
+        var events = VMManager.getVM(bind, _attrEventName, []);
         events.push({
             name: name,
             fn: bind[propKey]
@@ -50,24 +52,82 @@ export function VMEvent(name?: string) {
     }
 }
 
-var _vmAttrName = '__attrNames',
+var _vmAttrName = 'attrs',
     _getVmAttrs = function (target: any): { [name: string]: string } {
-        return target[_vmAttrName];
+        return VMManager.getVM(target, _vmAttrName);
     };
 
 /**
- * 引用模板变量$var
+ * 引用模板变量attr
  * @param name 变量名称，未指定为属性名称
  */
 export function VMAttr(name?: string) {
     return function (target: any, propKey: string) {
         name || (name = propKey);
-        var names = (target[_vmAttrName] || (target[_vmAttrName] = {}));
+        var names = VMManager.getVM(target, _vmAttrName, {});
         names[name] = propKey;
     }
 }
 
-var _undef: any;
+
+var _vmWatchName = 'watchs',
+    _getWatch = function (target: any): { [name: string]: string } {
+        return VMManager.getVM(target, _vmWatchName);
+    },
+    _getWatchContext = function(target:any): ()=>void{
+        let watchs = _getWatch(target);
+        if (!watchs) return null;
+        let values = {},
+            getVal = function(name){
+                return values[name] || (values[name] = []);
+            };
+        return function(){
+            let val,newVal,fn,isC,res,valList;
+            CmpxLib.each(watchs, function(item){
+                valList = getVal(item.name);
+                fn = item.fn;
+                isC = false;
+                res =[];
+                CmpxLib.each(item.watchs, function(item, idx){
+                    val = valList[idx];
+                    newVal = item.call(target);
+                    if (!_equals(val, newVal)){
+                        isC = true;
+                        valList[idx] = newVal;
+                    }
+                    res.push(newVal);
+                });
+                if (isC){
+                    values[item.name] = res;
+                    fn.apply(target, res);
+                }
+            });
+        };
+    };
+
+/**
+ * 引用模板变量watch
+ * @param p
+ */
+export function VMWatch(p: string | Function | any[]) {
+    return function (target: any, propKey: string) {
+        let watchs = VMManager.getVM(target, _vmWatchName, []),
+            list = CmpxLib.isArray(p) ? p : [p],
+            fn = target[propKey],
+            res = [];
+
+        CmpxLib.each(list, function(item){
+            res.push(CmpxLib.isString(item) ? new Function(['return ', item].join('')) : item);
+        });
+
+        watchs.push({
+            name:propKey,
+            watchs:res,
+            fn:fn
+        });
+    }
+}
+
 
 interface IBindInfo {
     type: string;
@@ -380,9 +440,19 @@ export class VMManager {
         return vm[name] = context;
     }
 
-    static getVM(target:any, name:string): any {
-        let vm = target[_vmName];
-        return vm && vm[name];
+    /**
+     * 获取MV内容
+     * @param target 
+     * @param name 
+     * @param defaultP 如果不存在时，此为默认内容
+     */
+    static getVM(target:any, name:string, defaultP?:any): any {
+        let vm = target[_vmName],
+            re = vm && vm[name];
+        if (!re && defaultP){
+            re = this.setVM(target, name, defaultP);
+        }
+        return re;
     }
 
     static include(target:any, context:IVMContext, include:any[], parent?:any):any{
@@ -748,7 +818,11 @@ export class CompileRender {
         //注意parentElement问题，但现在context只能放{{tmpl}}
         contextFn && contextFn(componet, parentElement, newSubject, true);
 
+        let watchFn = isNewComponet ? _getWatchContext(componet) : null;
         newSubject.subscribe({
+            update:function(){
+                watchFn && watchFn();
+            },
             remove: function (p: ISubscribeEvent) {
                 let rmFn = function () {
                     let vv: IViewvarDef = _getViewvarDef(componet);
@@ -1203,9 +1277,11 @@ export class Compile {
             };
 
         bind[bindAttrName] = _undef;
+        let watchFn = _getWatchContext(bind);
         subject.subscribe({
             update: function (p: ISubscribeEvent) {
                 doUpdate();
+                watchFn && watchFn();
                 bind.onUpdate();
             },
             ready: function () {
