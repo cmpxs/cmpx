@@ -22,12 +22,7 @@ export class Bind {
         this.$componet.$updateAsync(p);
     }
 
-    
-    onRead(): void {
-
-    }
-
-    onWrite(): void{
+    onChanged(): void{
 
     }
 

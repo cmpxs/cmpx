@@ -90,12 +90,26 @@ var _vmWatchName = 'watchs',
                 res =[];
                 CmpxLib.each(item.watchs, function(item, idx){
                     val = valList[idx];
-                    newVal = item.call(target);
-                    if (!_equals(val, newVal)){
+                    if (CmpxLib.isArray(item)){
+                        let newValList = [];
+                        val || (val = []);
                         isC = true;
-                        valList[idx] = newVal;
+                        CmpxLib.each(item, function(item, idx){
+                            newVal = item.call(target);
+                            if (_equals(val[idx], newVal)){
+                                isC = false;
+                            }
+                            newValList.push(newVal);
+                        });
+                        res.push(newValList);
+                    } else {
+                        newVal = item.call(target);
+                        if (!_equals(val, newVal)){
+                            isC = true;
+                            //valList[idx] = newVal;
+                        }
+                        res.push(newVal);
                     }
-                    res.push(newVal);
                 });
                 if (isC){
                     values[item.name] = res;
@@ -109,15 +123,21 @@ var _vmWatchName = 'watchs',
  * 引用模板变量watch
  * @param p
  */
-export function VMWatch(p: string | Function | any[]) {
+export function VMWatch(...args: any[]) {
     return function (target: any, propKey: string) {
         let watchs = VMManager.getVM(target, _vmWatchName, []),
-            list = CmpxLib.isArray(p) ? p : [p],
             fn = target[propKey],
             res = [];
-
-        CmpxLib.each(list, function(item){
-            res.push(CmpxLib.isString(item) ? new Function(['return ', item].join('')) : item);
+        CmpxLib.each(args, function(item){
+            if (CmpxLib.isArray(item)){
+                let tL = [];
+                CmpxLib.each(item, function(item){
+                    tL.push(CmpxLib.isString(item) ? new Function(['return ', item].join('')) : item);
+                });
+                res.push(tL);
+            }
+            else
+                res.push(CmpxLib.isString(item) ? new Function(['return ', item].join('')) : item);
         });
 
         watchs.push({
@@ -1240,12 +1260,11 @@ export class Compile {
         let bindAttrName = '__bindAttr__',
             bindAttrs = bind[bindAttrName],
             compileInfo = { subject: subject, componet: componet },
-            isW, isR,
+            isChange:boolean,
             writeFn = function (item) {
                 item.newValue = bind[item.attrName];
-                if (item.value != item.newValue) {
-                    isW || bind.onWrite();
-                    isW = true;
+                if (!_equals(item.value, item.newValue)) {
+                    isChange = true;
                     item.value = item.newValue;
                     item.content.write.call(componet, item.newValue);
                 }
@@ -1256,7 +1275,7 @@ export class Compile {
                         item.newValue = item.isObj ? item.content.read.call(componet)
                             : bind[item.attrName];
                         if (!_equals(item.value, item.newValue)) {
-                            isR = true;
+                            isChange = true;
                             item.value = item.newValue;
                             bind[item.attrName] = item.value;
                             item.attrDef.setAttribute(element, item.name, item.value, item.subName, compileInfo);
@@ -1268,10 +1287,10 @@ export class Compile {
                 });
             },
             doUpdate = function(){
-                isR = isW = false;
+                isChange = false;
                 update();
-                isR && bind.onRead();
-                if (isR || isW){
+                isChange && bind.onChanged()
+                if (isChange){
                     doUpdate();
                 }
             };
