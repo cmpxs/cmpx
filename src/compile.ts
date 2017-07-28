@@ -252,7 +252,8 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
 
             if (!(single && (!!end1 || !!txtEnd1))) {
 
-                var attrs = !cmd && !!tagContent ? _getAttrInfos(tagContent) : null;
+                //var attrs = !cmd && !!tagContent ? _getAttrInfos(tagContent) : null;
+                var attrs;
                 if (cmd) {
                     if ((single || !end)) {
                         switch (txtName) {
@@ -320,6 +321,8 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     //_forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*tmpl\s*=\s*([\'\"])(.*?)\3)*/i,
     _forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*(sync)(?:\s*=\s*([\'\"])(.*?)\4)*)*/i,
     _getForAttrInfos = function (content: string): Array<IAttrInfo> {
+        let filter = _getFilters(content);
+        content = filter.value;
         var extend = _forAttrRegex.exec(content);
         var attrs: Array<IAttrInfo> = [{
             name: '',
@@ -344,11 +347,15 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         let write: string, event: string,
             onceList = [], read: boolean = false, isOnce: boolean = false,
             onlyBing = _onlyBindRegex.test(value),
-            readTxt: string;
+            readTxt: string,filter;
 
         let type: string = '', reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
             content = decodeURIComponent(content);
+            let filter = _getFilters(content);
+            content = filter.value;
+
             reg = _bindTypeRegex.exec(content);
+
             let txt: string;
             if (reg) {
                 type = reg[1];
@@ -435,6 +442,22 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
             }
         }
         return index;
+    },
+    _filterRegex = /([|]+)[ ]?([^|]+)/g,
+    _getFilters = function(value: string):{value:string, filters:{name:string,context:string}[], has:boolean }{
+        let filters = [], tList;
+        value = value.replace(_filterRegex, function(find, split, contant:string){
+            if (split == '|'){
+                tList = contant.split(':');
+                filters.push({
+                    name:CmpxLib.trim(tList[0]),
+                    context:CmpxLib.trim(tList[1])
+                });
+                return '';
+            } else
+                return find;
+        });
+        return {value:CmpxLib.trim(value), filters:filters, has:filters.length > 0 };
     };
 
 export interface IVMContext {

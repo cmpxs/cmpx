@@ -12,8 +12,8 @@ class TestCP1 extends Componet{
 }
 
 var tmpl = `
-<div attr="{{ this.attr}}">
-
+<div attr="{{ this.attr | text | gt:'bbb'}}">
+{{: this.aaa  | text | lt:'aaa'}}
 {{tmpl id="tmpl1"}}
   dsfsf
 {{/tmpl}}
@@ -24,7 +24,7 @@ var tmpl = `
   sdfsfdsdf
 {{/include}}
 <input></input>
-{{for item in this.list}}fortext{{/for}}
+{{for item in this.list | order}}fortext{{/for}}
 </div>  
 `;
 
