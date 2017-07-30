@@ -12,20 +12,8 @@ class TestCP1 extends Componet{
 }
 
 var tmpl = `
-<div attr="{{ this.attr | text | gt:'bbb'}}">
-{{: this.aaa  | text | lt:'aaa'}}
-{{tmpl id="tmpl1"}}
-  dsfsf
-{{/tmpl}}
-
-{{include tmpl="tmpl1" /}}
-
-{{include tmpl="tmpl1"}}
-  sdfsfdsdf
-{{/include}}
-<input></input>
-{{for item in this.list | order}}fortext{{/for}}
-</div>  
+{{: this.aaa  | text | lt:'aaa'}} | {{: this.bbbb | lt:'aaa'}} | {{this.ccc}} || {{: this.ddd}}
+<span name="{{: this.aaaa | text}} | {{this.ccc}} || {{: this.ddd}}"></span>
 `;
 
 describe('Compile', () => {

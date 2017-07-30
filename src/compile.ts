@@ -34,7 +34,7 @@ export function VMBind(config: IVMBindConfig) {
 }
 
 export class Filter {
-    value:any;
+    result:any;
     onFilter(value:any, param:any, cb:(result:any)=>void, componet?:Componet, element?:HTMLElement){
         cb('');
     };
@@ -378,6 +378,15 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     _bindTypeRegex = /^\s*([\<\>\:\@\#])\s*(.*)/,
     _removeEmptySplitRegex = /^['"]{2,2}\+|\+['"]{2,2}/g,
     _onlyBindRegex = /^\$\(\$[^$]*\$\)\$$/,
+    _pushFilterCT = function(filterList:any[], filters:{name:string,context:string}[], context:any):number{
+        let len = filterList.length, fts = [];
+        CmpxLib.each(filters, function(item){
+            fts.push(['{ filter:"', item.name,'"', (item.context ? [',  fn:function(){ return ', item.context, '; }'].join('') : ''), ' }'].join(''));
+        });
+        let str = ['var filter', len, ' = __filter(componet, element, subject, [', fts.join(','), '], function(){ return ',context, '; });'].join('');
+        filterList.push(str);
+        return len;
+    },
     //获取内容绑定信息，如 name="aaa{{this.name}}"
     _getBind = function (value: string, split: string): IBindInfo {
         value = _escapeBuildString(value);
@@ -385,11 +394,12 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         let write: string, event: string,
             onceList = [], read: boolean = false, isOnce: boolean = false,
             onlyBing = _onlyBindRegex.test(value),
-            readTxt: string,filter;
+            readTxt: string,filterList = [];
 
         let type: string = '', reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
             content = decodeURIComponent(content);
-            let filter = _getFilterInfos(content);
+            let filter = _getFilterInfos(content),
+                hasFilter = filter.has;
             content = filter.value;
 
             reg = _bindTypeRegex.exec(content);
@@ -403,11 +413,18 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                 txt = content;
             }
             readTxt = '';
+            let ftPos, ftName;
             switch (type) {
                 case ':'://一次只读
-                    onceList.push(txt);
                     isOnce = true;
-                    readTxt = onlyBing ? 'once0' : [split, 'once' + (onceList.length - 1), split].join('+');
+                    if (hasFilter){
+                        ftPos = _pushFilterCT(filterList, filter.filters, txt);
+                        ftName =['CmpxLib.toStr(val',ftPos,')'].join('');
+                        readTxt = onlyBing ? ftName : [split, ftName, split].join('+');
+                    } else {
+                        onceList.push(txt);
+                        readTxt = onlyBing ? 'once0' : [split, 'once' + (onceList.length - 1), split].join('+');
+                    }
                     break;
                 case '@'://事件
                     event = txt;
@@ -420,20 +437,25 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
                 case '<'://只读
                 default:
                     read = true;
-                    readTxt = onlyBing ? txt : [split, 'CmpxLib.toStr(' + txt + ')', split].join('+');
+                    if (hasFilter){
+                        ftPos = _pushFilterCT(filterList, filter.filters, txt);
+                        ftName =['CmpxLib.toStr(val',ftPos,')'].join('');
+                        readTxt = onlyBing ? ftName : [split, ftName, split].join('+');
+                    } else {
+                        readTxt = onlyBing ? txt : [split, 'CmpxLib.toStr(' + txt + ')', split].join('+');
+                    }
                     break;
             }
             return readTxt;
         }), split].join('');
 
         if (onlyBing) {
-            readContent = isOnce ? 'once0' : readTxt;
+            readContent = readTxt;
         }
-        //readContent = readContent.replace(_removeEmptySplitRegex, '');
-
+        
         var once: string;
         if (write || read || isOnce || onceList.length > 0) {
-            if (isOnce) {
+            if (isOnce &&　onceList.length > 0) {
                 let oList = [];
                 CmpxLib.each(onceList, function (item: string, index: number) {
                     oList.push(['once', index, ' = ', onlyBing ? item : ('CmpxLib.toStr(' + item + ')')].join(''));
@@ -445,18 +467,32 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         } else if (event) {
             event = 'function(event){ ' + event + '; }';
         }
-
-        readContent = `(function(){
+        let ftLen = filterList.length,
+            hasFt = ftLen > 0;
+        if (hasFt){
+            let ftNList = [], ftVList =[];
+            for (let i=0; i<ftLen;i++){
+                ftNList.push('filter'+i);
+                ftVList.push('val'+i);
+            }
+            readContent = read || isOnce ? 'function(cb){ __mergerFilter(['+ftNList.join(',')+'], function('+ftVList.join(',')+'){ cb(' + readContent + '); }); }' : 'null';
+        } else {
+            readContent = read || isOnce ? 'function(cb){ cb(' + readContent + '); }' : 'null';
+        }
+        
+        let bindContent = `(function(){
   ${once ? once : ''}
+  ${hasFt ? filterList.join("\n") : ''}
+
   return {
     once:${once ? (read ? 'false' : 'true') : 'false'},
-    read:${read || isOnce ? 'function(){ return ' + readContent + '; }' : 'null'},
+    read:${readContent},
     write:${write ? write : 'null'},
     event:${event ? event : 'null'}
   };
 }).call(componet)`;
 
-        return { type: type, content: readContent };
+        return { type: type, content: bindContent };
     },
     _makeTagInfoChildren = function (attrs: Array<ITagInfo>, outList: Array<ITagInfo>,
         len: number, index: number = 0, parent: ITagInfo = null): number {
@@ -1030,32 +1066,46 @@ export class Compile {
             }
         });
         let count = filterList.length,
-            filterResult = function (filter: Filter, alway: boolean, result: any, p: any, index:number) {
-                if (alway) {
+            result:any,
+            filterResult = function (filter: Filter, alway: boolean, p: any, index: number, cb:(result:any)=>void) {
+                if (alway || !_equals(filter.result, result)) {
+                    filter.result = result;
                     filter.onFilter(result, p, function (r) {
-                        filterResultLop(r, ++index);
+                        result = r;
+                        filterResultLop(++index, cb);
                     }, componet, element);
-                }
-            }, filterResultLop = function (result: any, index: number) {
+                } else
+                    filterResultLop(++index, cb);
+            }, filterResultLop = function (index: number, cb:(result:any)=>void) {
+                if (index == count) cb(result);
                 let item: { filter: Filter, alway: boolean, fn: () => any } = filterList[index];
-                return filterResult(item.filter, item.alway, result, item.fn && item.fn.call(componet), index);
+                return filterResult(item.filter, item.alway, item.fn && item.fn.call(componet), index, cb);
             };
-        let filterContext = function(){
-            let result =  context.call(componet);
-            count > 0 && CmpxLib.each(filterList, function(item:{filter:Filter, alway:boolean, fn:()=>any}){
-                if (item.alway)
-                    item.filter.onFilter(result, item.fn.call(componet), function(r){
 
-                    }, componet, element);
-                if (true){
-
-                }
-            });
-            return result;
+        let filterContext = function (cb:(result:any)=>void) {
+            result = context.call(componet);
+            if (count > 0){
+                filterResultLop(0, cb);
+            } else
+                cb(result);
         };
-        return filterContext();
+        return filterContext;
     }
-    //(componet, element, subject, [{ filter:'text', fn:function(){ return ['aaa']; } }], function(){ return CmpxLib.toStr(this.aaa); })
+
+    public static mergerFilter(componet:Componet, filters:any[], cb:()=>void){
+        let count = filters.length;
+        if (count > 0){
+            let results = [];
+            CmpxLib.each(filters, function(item, index){
+                item.call(componet, function(r){
+                    results[index] = r;
+                    if (--count == 0)
+                        cb.apply(componet, results);
+                });
+            });
+        } else
+            cb.call(componet);
+    }
 
     public static loadTmplCfg(loadTmplFn: (url: string, cb: (tmpl: string | Function) => void) => void): void {
         _loadTmplFn = loadTmplFn;
@@ -1845,6 +1895,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
         __createTextNode = Compile.createTextNode, __setViewvar = Compile.setViewvar,
         __forRender = Compile.forRender, __ifRender = Compile.ifRender,
         __includeRender = Compile.includeRender, __updateRender = Compile.updateRender,
+        __filter = Compile.filter, __mergerFilter = Compile.mergerFilter,
         __componet = componet;`);
 
     return new Function('CmpxLib', 'Compile', 'componet', 'element', 'subject', 'param', outList.join('\n'));
