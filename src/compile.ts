@@ -782,6 +782,12 @@ let _tmplName = '__tmpl__',
             return fragment;
         }
         return null;
+    },
+    _textContentName = '',
+    _setTextNode = function(textNode, content){
+        if (!_textContentName)
+            _textContentName = ('textContent' in textNode) ? 'textContent' : 'nodeValue';
+        textNode[_textContentName] = content;
     };
 
 export class CompileRender {
@@ -1154,22 +1160,23 @@ export class Compile {
         if (subject.isRemove) return;
 
         let isObj = !CmpxLib.isString(content),
-            value: string = '',
             once: boolean = isObj ? content.once : false,
-            readFn = isObj ? content.read : null,
-            textNode = document.createTextNode(isObj ? (once ? readFn.call(componet) : value) : content);
+            textNode = document.createTextNode(''),
+            readFn = isObj ? function() { return content.read.call(componet, componet, textNode, subject); }: null,
+            value: string = '';
         parentElement.appendChild(textNode);
-        subject.subscribe({
-            update: function (p: ISubscribeEvent) {
-                if (!once && readFn) {
-                    var newValue = readFn.call(componet);
+        if (!once && readFn){
+            subject.subscribe({
+                update: function (p: ISubscribeEvent) {
+                    var newValue = readFn();
                     if (!_equals(value, newValue)) {
                         value = newValue;
-                        textNode[('textContent' in textNode) ? 'textContent' : 'nodeValue'] = newValue;
+                        _setTextNode(textNode, newValue);
                     }
                 }
-            }
-        });
+            });
+        } else
+            _setTextNode(textNode, isObj ? readFn() : content);
         return textNode;
     }
 
