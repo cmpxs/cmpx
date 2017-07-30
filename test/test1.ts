@@ -14,6 +14,12 @@ class TestCP1 extends Componet{
 var tmpl = `
 {{: this.aaa  | text | lt:'aaa'}} | {{: this.bbbb | lt:'aaa'}} | {{this.ccc}} || {{: this.ddd}}
 <span name="{{: this.aaaa | text}} | {{this.ccc}} || {{: this.ddd}}"></span>
+{{for item in this.list | asc}}
+{{: item.text}}
+{{/for}}
+{{for item in this.list}}
+{{: item.text}}
+{{/for}}
 `;
 
 describe('Compile', () => {
