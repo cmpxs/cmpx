@@ -33,6 +33,44 @@ export function VMBind(config: IVMBindConfig) {
     };
 }
 
+export class Filter {
+    value:any;
+    onFilter(value:any, param:any, cb:(result:any)=>void, componet?:Componet, element?:HTMLElement){
+        cb('');
+    };
+}
+
+export interface IMVFilterConfig {
+    name:string;
+    /**
+     * 无论原值是否有改变就过滤，默认true
+     */
+    alway?:boolean;
+}
+
+var _getVMFilter = function (target:any, name:string): { filter: Filter, alway:boolean } {
+        let context = VMManager.getFilter(target, name);
+        return context ? { filter: context.filter , alway:context.alway }  : null;
+    };
+
+/**
+ * 注入组件配置信息
+ * @param config 
+ */
+export function VMFilter(config: IMVFilterConfig) {
+    return function (constructor: typeof Filter) {
+        let target = constructor.prototype,
+            context = {
+                name:config.name,
+                type:'Filter',
+                alway:config.alway !== false,
+                filter:new constructor()
+            };
+        VMManager.setConfig(target, config);
+        VMManager.include(target, context, null);
+    };
+}
+
 var _attrEventName = 'events',
     _getBindEvents = function (bind: Bind) {
         return VMManager.getVM(bind, _attrEventName);
@@ -321,7 +359,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
     //_forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*tmpl\s*=\s*([\'\"])(.*?)\3)*/i,
     _forAttrRegex = /\s*([^\s]+)\s*\in\s*([^\s]+)\s*(?:\s*(sync)(?:\s*=\s*([\'\"])(.*?)\4)*)*/i,
     _getForAttrInfos = function (content: string): Array<IAttrInfo> {
-        let filter = _getFilters(content);
+        let filter = _getFilterInfos(content);
         content = filter.value;
         var extend = _forAttrRegex.exec(content);
         var attrs: Array<IAttrInfo> = [{
@@ -351,7 +389,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
 
         let type: string = '', reg: any, readContent: string = [split, value.replace(_cmdDecodeAttrRegex, function (find: string, content: string, index: number) {
             content = decodeURIComponent(content);
-            let filter = _getFilters(content);
+            let filter = _getFilterInfos(content);
             content = filter.value;
 
             reg = _bindTypeRegex.exec(content);
@@ -444,7 +482,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         return index;
     },
     _filterRegex = /([|]+)[ ]?([^|]+)/g,
-    _getFilters = function(value: string):{value:string, filters:{name:string,context:string}[], has:boolean }{
+    _getFilterInfos = function(value: string):{value:string, filters:{name:string,context:string}[], has:boolean }{
         let filters = [], tList;
         value = value.replace(_filterRegex, function(find, split, contant:string){
             if (split == '|'){
@@ -501,9 +539,7 @@ export class VMManager {
     static include(target:any, context:IVMContext, include:any[], parent?:any):any{
         let obj = {
             parent:null,
-            context:context,
-            componets:{},
-            binds:{}
+            context:context
         }, temp:IVMContext;
 
         var a:Function;
@@ -511,14 +547,9 @@ export class VMManager {
         CmpxLib.each(include, function(item){
             temp = this.getContext(item.prototype);
             if (temp){
-                switch(temp.type){
-                    case 'Componet':
-                        obj.componets[temp.name] = temp;
-                        break;
-                    case 'Bind':
-                        obj.binds[temp.name] = temp;
-                        break;
-                }
+                let type = temp.type;
+                obj[type] || (obj[type] = {});
+                obj[type][temp.name] = temp;
             }
         }, this);
         return this.setVM(target, _vmContextName, obj);
@@ -540,14 +571,21 @@ export class VMManager {
         return cp || (parent && this.getContextEx(parent, type, name));
     }
 
-    static getComponet(target:any, name?:string):IVMContext{
-        return name ? this.getContextEx(target, 'componets', name)
+    static getContextByType(target:any, type:string, name?:string): IVMContext {
+        return name ? this.getContextEx(target, type, name)
             : this.getContext(target);
     }
 
+    static getComponet(target:any, name?:string):IVMContext{
+        return this.getContextByType(target, 'Componet', name);
+    }
+
     static getBind(target:any, name?:string):IVMContext{
-        return name ? this.getContextEx(target, 'binds', name)
-            : this.getContext(target);
+        return this.getContextByType(target, 'Bind', name);
+    }
+
+    static getFilter(target:any, name?:string):IVMContext{
+        return this.getContextByType(target, 'Filter', name);
     }
 
     /**
@@ -979,6 +1017,46 @@ export class Compile {
         _renderPR = null;
     }
 
+    public static filter(componet:Componet, element:HTMLElement, subject:CompileSubject, filters:any[], context:()=>any){
+        let filterList = [];
+        CmpxLib.each(filters, function(item:{filter:string, fn:()=>any}){
+            let ft = _getVMFilter(componet, item.filter);
+            if (ft){
+                filterList.push({
+                    filter:ft.filter,
+                    alway:ft.alway,
+                    fn:item.fn
+                });
+            }
+        });
+        let count = filterList.length,
+            filterResult = function (filter: Filter, alway: boolean, result: any, p: any, index:number) {
+                if (alway) {
+                    filter.onFilter(result, p, function (r) {
+                        filterResultLop(r, ++index);
+                    }, componet, element);
+                }
+            }, filterResultLop = function (result: any, index: number) {
+                let item: { filter: Filter, alway: boolean, fn: () => any } = filterList[index];
+                return filterResult(item.filter, item.alway, result, item.fn && item.fn.call(componet), index);
+            };
+        let filterContext = function(){
+            let result =  context.call(componet);
+            count > 0 && CmpxLib.each(filterList, function(item:{filter:Filter, alway:boolean, fn:()=>any}){
+                if (item.alway)
+                    item.filter.onFilter(result, item.fn.call(componet), function(r){
+
+                    }, componet, element);
+                if (true){
+
+                }
+            });
+            return result;
+        };
+        return filterContext();
+    }
+    //(componet, element, subject, [{ filter:'text', fn:function(){ return ['aaa']; } }], function(){ return CmpxLib.toStr(this.aaa); })
+
     public static loadTmplCfg(loadTmplFn: (url: string, cb: (tmpl: string | Function) => void) => void): void {
         _loadTmplFn = loadTmplFn;
     }
@@ -1162,7 +1240,7 @@ export class Compile {
         let isObj = !CmpxLib.isString(content),
             once: boolean = isObj ? content.once : false,
             textNode = document.createTextNode(''),
-            readFn = isObj ? function() { return content.read.call(componet, componet, textNode, subject); }: null,
+            readFn = isObj ? function() { return content.read.call(componet); }: null,
             value: string = '';
         parentElement.appendChild(textNode);
         if (!once && readFn){
@@ -1177,6 +1255,7 @@ export class Compile {
             });
         } else
             _setTextNode(textNode, isObj ? readFn() : content);
+
         return textNode;
     }
 
