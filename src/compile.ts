@@ -783,7 +783,7 @@ let _tmplName = '__tmpl__',
         }
         return null;
     },
-    _textContentName = '',
+    _textContentName:string,
     _setTextNode = function(textNode, content){
         if (!_textContentName)
             _textContentName = ('textContent' in textNode) ? 'textContent' : 'nodeValue';
