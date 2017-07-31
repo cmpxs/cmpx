@@ -25,6 +25,17 @@ let _getParentElement = HtmlDef.getParentElement,
         single: false,
         //创建器
         createElement: _createElementRaw
+    }),
+    _createElementSvg = function (name: string, attrs: ICreateElementAttr[], parent?: HTMLElement, content?: string): HTMLElement {
+        let element: any = document.createElementNS('http://www.w3.org/2000/svg',name);
+        _setAttribute(element, attrs);
+        return element;
+    },
+    _svrTag = new HtmlTagDef({
+        raw: false,
+        single: false,
+        //创建器
+        createElement: _createElementSvg
     });
 
 /**
@@ -34,8 +45,14 @@ let _htmlConfig = function () {
 
     //扩展tag, 如果不支持请在这里扩展
     HtmlDef.extendHtmlTagDef({
-        //默认不支持svg, 请处理HtmlTagDef的createElement参数
-        'svg': DEFULE_TAG,
+        'svg': _svrTag,
+        'rect': _svrTag,
+        'circle': _svrTag,
+        'ellipse': _svrTag,
+        'line': _svrTag,
+        'polyline': _svrTag,
+        'polygon': _svrTag,
+        'path': _svrTag,
         //默认不支持math, 请处理HtmlTagDef的createElement参数
         'math': DEFULE_TAG,
         'br': SINGLE_TAG,

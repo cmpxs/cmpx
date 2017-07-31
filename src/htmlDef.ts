@@ -172,14 +172,22 @@ export const DEFAULT_ATTR_PROP: IHtmlAttrDef = {
   setAttribute(element: HTMLElement, name: string, value: string, subName?: string, complieInfo?:IComplieInfo) {
     if (subName)
       element[name][subName] = name == 'value' ? CmpxLib.toStr(value) : value;
-    else
-      element[name] = name == 'value' ? CmpxLib.toStr(value) : value;
+    else{
+      if (name == 'style')
+         element.setAttribute(name, CmpxLib.toStr(value));
+      else
+        element[name] = name == 'value' ? CmpxLib.toStr(value) : value;
+    }
   },
   getAttribute(element: HTMLElement, name: string, subName?: string, complieInfo?:IComplieInfo):any {
     if (subName)
       return element[name][subName];
-    else
-      return element[name];
+    else{
+      if (name == 'style')
+        return element.getAttribute(name);
+      else
+        return element[name];
+    }
   }
 };
 
