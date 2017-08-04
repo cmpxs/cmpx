@@ -543,7 +543,8 @@ export interface IVMContext {
 }
 
 let _vmName = "__vm__", _vmConfigName = 'config',
-    _vmContextName = 'context', _vmOtherName = 'other';
+    _vmContextName = 'context',
+    _vmNameCT = "__vmCT__";
 export class VMManager {
 
     static parent:(target:any, context:IVMContext)=>any;
@@ -553,9 +554,11 @@ export class VMManager {
      * @param target 
      * @param name 
      * @param context 
+     * @param global 是否全局用，否则用于实体化个体上，默认true
      */
-    static setVM(target:any, name:string, context:any): any {
-        let vm = target[_vmName] || (target[_vmName] = {});
+    static setVM(target:any, name:string, context:any, global?:boolean): any {
+        let vmName = global === false ? _vmNameCT : _vmName,
+            vm = target[vmName] || (target[vmName] = {});
         return vm[name] = context;
     }
 
@@ -565,8 +568,8 @@ export class VMManager {
      * @param name 
      * @param defaultP 如果不存在时，此为默认内容
      */
-    static getVM(target:any, name:string, defaultP?:any): any {
-        let vm = target[_vmName],
+    static getVM(target:any, name:string, defaultP?:any, global?:boolean): any {
+        let vm = target[global === false ? _vmNameCT : _vmName],
             re = vm && vm[name];
         if (!re && defaultP){
             re = this.setVM(target, name, defaultP);
@@ -639,29 +642,18 @@ export class VMManager {
         return this.getVM(target, _vmConfigName);
     }
 
-    // private static getContext(target:any): any{
-    //     return this.getVM(target, _vmContextName);
-    // }
-
-    // /**
-    //  * 其它
-    //  * @param target 
-    //  * @param name 
-    //  * @param context 
-    //  */
-    // static setOther(target:any, name:string, context:any){
-    //     return this.setVM(target, _vmOtherName, context);
-    // }
-
-    // static getOter(target:any, name:string): any{
-    //     return this.getVM(target, _vmOtherName);
-    // }
-
     static getTarget(p:any, t:any):any{
         return (p instanceof t ? p : p.prototype);
     }
 
 }
+
+let _setChange = function(target:any, change:boolean){
+    VMManager.setVM(target, 'change', change, false);
+},
+_getChange = function(target:any){
+    return VMManager.getVM(target, 'change', null, false);
+};
 
 export interface IVMConfig {
     //标签名称
@@ -850,8 +842,7 @@ let _tmplName = '__tmpl__',
     },
     _detachElement = function (nodes: Node[]) {
         if (nodes && nodes.length > 0) {
-            let //pNode:Node = _getParentElement(nodes[0]),
-                fragment = document.createDocumentFragment();
+            let fragment = document.createDocumentFragment();
             CmpxLib.each(nodes, function (item) {
                 fragment.appendChild(item);
             });
@@ -948,6 +939,15 @@ export class CompileRender {
             update:function(){
                 watchFn && watchFn();
             },
+            updateAfter:function(){
+                 if (isNewComponet){
+                    if (_getChange(componet)){
+                        _setChange(componet, false);
+                        componet.onChange();
+                    }
+                    componet.onUpdate();
+                }
+            },
             remove: function (p: ISubscribeEvent) {
                 let rmFn = function () {
                     let vv: IViewvarDef = _getViewvarDef(componet);
@@ -1009,28 +1009,27 @@ export class CompileRender {
             });
             readyFn();
         },
-            readyFn = function () {
-                _insertAfter(fragment, refNode, _getParentElement(refNode));
-                let readyEnd = function () {
-                    newSubject.ready({
-                        componet: componet
-                    });
-                    //reay后再次补发update
-                    newSubject.update({
-                        componet: componet
-                    });
-                };
-                if (isNewComponet)
-                    componet.onReady(function () {
-                        readyEnd();
-                    }, null);
-                else
-                    readyEnd();
+        readyFn = function () {
+            _insertAfter(fragment, refNode, _getParentElement(refNode));
+            let readyEnd = function () {
+                newSubject.ready({
+                    componet: componet
+                });
+                //reay后再次补发update
+                newSubject.update({
+                    componet: componet
+                });
             };
+            if (isNewComponet){
+                readyEnd();
+                componet.onReady();
+            }
+            else
+                readyEnd();
+        };
         if (isNewComponet) {
-            componet.onInit(function (err) {
-                initFn();
-            }, null);
+            initFn();
+            componet.onInit();
         }
         else
             initFn();
@@ -1071,6 +1070,7 @@ export class Compile {
             result:any,
             filterResult = function (filter: Filter, alway: boolean, p: any, index: number, cb:(result:any)=>void) {
                 if (alway || !_equals(filter.result, result)) {
+                    _setChange(componet, true);
                     filter.result = result;
                     filter.onFilter(result, p, function (r) {
                         result = filter.valuePre = r;
@@ -1264,6 +1264,7 @@ export class Compile {
                         if (isRead) {
                             content.read.call(parent, function(newValue){
                                 if (!_equals(value, newValue)) {
+                                    _setChange(componet, true);
                                     value = newValue;
                                     componet[name] = value;
                                     componet.$updateAsync();
@@ -1303,6 +1304,7 @@ export class Compile {
                 update: function (p: ISubscribeEvent) {
                     readFn(function(newValue){
                         if (!_equals(value, newValue)) {
+                            _setChange(componet, true);
                             value = newValue;
                             _setTextNode(textNode, newValue);
                         }
@@ -1351,6 +1353,7 @@ export class Compile {
                     writeFn = function () {
                         newValue = attrDef.getAttribute(element, name, '', compileInfo);
                         if (!_equals(value, newValue)) {
+                            _setChange(componet, true);
                             value = newValue;
                             content.write.call(componet, newValue);
                             componet.$updateAsync();
@@ -1372,6 +1375,7 @@ export class Compile {
                         if (isRead) {
                             content.read.call(componet, function(newValue){
                                 if (!_equals(value, newValue)) {
+                                    _setChange(componet, true);
                                     value = newValue;
                                     attrDef.setAttribute(element, name, value, subName, compileInfo);
                                 }
@@ -1475,6 +1479,7 @@ export class Compile {
                 update();
                 isChange && bind.onChanged()
                 if (isChange){
+                    _setChange(componet, true);
                     doUpdate();
                 }
             };
@@ -1545,6 +1550,7 @@ export class Compile {
             update: function (p: ISubscribeEvent) {
                 dataFn.call(componet, componet, parentElement, subject, function(datas){
                     if (!_equalArray(datas, value)) {
+                        _setChange(componet, true);
 
                         let isArray = CmpxLib.isArray(datas);
 

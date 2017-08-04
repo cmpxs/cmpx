@@ -8,20 +8,16 @@ export class Componet {
     readonly $parentElement: HTMLElement;
 
     /**
-     * 更新View，View与Componet数据同步
+     * 更新(同步)视图，视图与数据同步
      * @param p 传入参数
      */
     $update(p?: any) {
         if (this.$isDisposed) return;
         this.clearUpdateTime();
-        this.onUpdateBefore(() => {
-            if (this.$isDisposed) return;
-            this.$subject.update({
-                componet: this,
-                param: p
-            });
-            this.onUpdate(function () { }, p);
-        }, p);
+        this.$subject.update({
+            componet: this,
+            param: p
+        });
     }
 
     private updateId: any;
@@ -32,7 +28,7 @@ export class Componet {
         }
     }
     /**
-     * 步异步更新View，View与Componet数据同步
+     * 步异步更新(同步)视图，视图与数据同步
      * @param p 传入参数
      */
     $updateAsync(callback?: () => void, p?: any) {
@@ -55,37 +51,35 @@ export class Componet {
     }
 
     /**
-     * 在解释View之前触发，一般准备数据用
-     * @param cb 处理完成后，通知继续处理
-     * @param p 传入的参数
+     * 准备数据事，此时还没开始解释视图，在所有事件之前，一次性事件
+     * @param cb 处理完数据执行此方法
      */
-    onInit(cb: (err?: any) => void, p?: any): void {
+    onPrepareData(cb: (err?: any) => void):void{
         cb && cb();
     }
 
     /**
-     * View所有东西已经处理完成时触发
-     * @param cb 处理完成后，通知继续处理
-     * @param p 传入参数
+     * 在组件视图初始化后触发， 一次性事件
      */
-    onReady(cb: (err?: any) => void, p?: any): void {
-        cb && cb();
+    onInit(): void {
     }
 
     /**
-     * $update前时触发
-     * @param cb 处理完成后，通知继续处理
+     * 组件视图已经处理完成时触发， 一次性事件
      */
-    onUpdateBefore(cb: (err?: any) => void, p?: any): void {
-        cb && cb();
+    onReady(): void {
     }
 
     /**
-     * $update后时触发
-     * @param cb 处理完成后，通知继续处理
+     * 每次数据与视图更新（同步）后触发
      */
-    onUpdate(cb: (err?: any) => void, p?: any): void {
-        cb && cb();
+    onUpdate(): void {
+    }
+
+    /**
+     * 每次数据与视图更新（同步）发生改变后触发
+     */
+    onChange():void{
     }
 
     /**
@@ -97,6 +91,5 @@ export class Componet {
      */
     onDispose() {
     }
-
 
 }

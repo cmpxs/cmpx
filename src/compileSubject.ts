@@ -10,6 +10,7 @@ export interface ISubscribeParam {
     init?: (p: ISubscribeEvent) => void;
     //更新视图
     update?: (p: ISubscribeEvent) => void;
+    updateAfter?: (p: ISubscribeEvent) => void;
     //视图准备好
     ready?: (p: ISubscribeEvent) => void;
     //节点或视图删除
@@ -50,6 +51,7 @@ export class CompileSubject {
     subscribe(p: ISubscribeParam): ISubscribeParam {
         if (!this.isRemove) {
             p.update && this.subscribeIn('update', p);
+            p.updateAfter && this.subscribeIn('updateAfter', p);
             p.remove && this.subscribeIn('remove', p);
             p.detach && this.subscribeIn('detach', p);
             if (this.ready)
@@ -79,6 +81,7 @@ export class CompileSubject {
     unSubscribe(p: ISubscribeParam): void {
         if (!this.isRemove){
             p.update && this.unSubscribeIn('update', p);
+            p.updateAfter && this.unSubscribeIn('updateAfter', p);
             p.ready && this.unSubscribeIn('ready', p);
             p.detach && this.unSubscribeIn('detach', p);
             p.remove && this.unSubscribeIn('remove', p);
@@ -116,6 +119,7 @@ export class CompileSubject {
     }
 
     private updateList:ISubscribeParam[];
+    private updateAfterList:ISubscribeParam[];
     /**
      * 发送更新通知
      * @param p 发送事件参数
@@ -123,6 +127,9 @@ export class CompileSubject {
     update(p: ISubscribeEvent) {
         if (this.isRemove || this.isDetach) return;
         CmpxLib.each(this.updateList, function (fn:any) {
+            fn && fn(p);
+        });
+        CmpxLib.each(this.updateAfterList, function (fn:any) {
             fn && fn(p);
         });
     }
