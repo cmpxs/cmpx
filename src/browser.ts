@@ -54,6 +54,7 @@ let _htmlConfig = function () {
         'polygon': _svrTag,
         'path': _svrTag,
         //默认不支持math, 请处理HtmlTagDef的createElement参数
+        //document.createElementNS('http://www.w3.org/1998/Math/MathML', 'math');
         'math': DEFULE_TAG,
         'br': SINGLE_TAG,
         'style': _rawTag,
