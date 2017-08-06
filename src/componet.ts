@@ -51,15 +51,7 @@ export class Componet {
     }
 
     /**
-     * 准备数据事，此时还没开始解释视图，在所有事件之前，一次性事件
-     * @param cb 处理完数据执行此方法
-     */
-    onPrepareData(cb: (err?: any) => void):void{
-        cb && cb();
-    }
-
-    /**
-     * 在组件视图初始化后触发， 一次性事件
+     * 在组件视图初始化后触发，此时视图还没插入到dom， 一次性事件
      */
     onInit(): void {
     }
@@ -79,7 +71,7 @@ export class Componet {
     /**
      * 每次数据与视图更新（同步）发生改变后触发
      */
-    onChange():void{
+    onChanged():void{
     }
 
     /**

@@ -943,7 +943,7 @@ export class CompileRender {
                  if (isNewComponet){
                     if (_getChange(componet)){
                         _setChange(componet, false);
-                        componet.onChange();
+                        componet.onChanged();
                     }
                     componet.onUpdate();
                 }
@@ -1255,9 +1255,10 @@ export class Compile {
                     writeFn = function (p: ISubscribeEvent) {
                         newValue = componet[name];
                         if (value != newValue) {
+                            _setChange(parent, true);
                             value = newValue;
                             content.write.call(parent, newValue);
-                            parent.$updateAsync();
+                            parent.$update();
                         }
                     },
                     updateFn = function (p: ISubscribeEvent) {
@@ -1267,7 +1268,7 @@ export class Compile {
                                     _setChange(componet, true);
                                     value = newValue;
                                     componet[name] = value;
-                                    componet.$updateAsync();
+                                    componet.$update();
                                 } else if (isWrite) {
                                     writeFn(p);
                                 }
@@ -1356,7 +1357,7 @@ export class Compile {
                             _setChange(componet, true);
                             value = newValue;
                             content.write.call(componet, newValue);
-                            componet.$updateAsync();
+                            componet.$update();
                         }
                     };
 

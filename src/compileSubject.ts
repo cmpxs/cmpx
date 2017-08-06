@@ -120,18 +120,25 @@ export class CompileSubject {
 
     private updateList:ISubscribeParam[];
     private updateAfterList:ISubscribeParam[];
+    private upateId = 0;
     /**
      * 发送更新通知
      * @param p 发送事件参数
      */
     update(p: ISubscribeEvent) {
         if (this.isRemove || this.isDetach) return;
+        this.upateId++;
+        if (this.upateId == 99999)
+            this.upateId = 0;
+        var updateId = this.upateId;
         CmpxLib.each(this.updateList, function (fn:any) {
+            if (this.upateId != updateId) return false;
             fn && fn(p);
-        });
+        }, this);
         CmpxLib.each(this.updateAfterList, function (fn:any) {
+            if (this.upateId != updateId) return false;
             fn && fn(p);
-        });
+        }, this);
     }
 
     /**
