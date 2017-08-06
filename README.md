@@ -157,11 +157,11 @@ export default class AppComponet extends Componet{
 
 ### 组件事件
 
-- onInit(cb)：初始化时触发，如：准备数据；此时还没开始解释模板内容；
-- onReady(cb)：View已经准备好时触发，如：可以后准备数据；此时可以访问View的所有内容；
-- onUpdateBefore(cb)：调用this.$update并同步View数据前触发；
-- onUpdate(cb)：调用this.$update并同步View数据后触发；
-- onDispose()：销毁组件时触发；
+- onChanged()：每次数据与视图更新（同步）发生改变后触发；
+- onInit()：在组件视图初始化后触发，此时视图还没插入到dom， 一次性事件；
+- onReady()：组件视图已经处理完成时触发， 一次性事件；
+- onUpdate()：每次数据与视图更新（同步）后触发；
+- onDispose()：在componet释放前触发；
 
 ```typescript
 import { Componet, VMComponet } from "cmpx";
@@ -176,23 +176,23 @@ export default class AppComponet extends Componet{
 
     text = "hello world"
 
-    onInit(cb){
+    onInit(){
         console.log('onInit');
         setTimeout(()=>{
             this.text += new Date().valueOf();
             //表示处理完成
-            super.onInit(cb);
+            super.onInit();
         }, 1000);
     }
 
-    onReady(cb){
+    onReady(){
         console.log('onReady');
-        super.onReady(cb);
+        super.onReady();
     }
 
-    onUpdate(cb){
+    onUpdate(){
         console.log('onUpdate');
-        super.onUpdate(cb);
+        super.onUpdate();
     }
 
     onDispose(){
@@ -488,9 +488,9 @@ export default class AppComponet extends Componet{
         alert(this.input1.value);
     }
 
-    onReady(cb){
+    onReady(b){
         this.input1.value
-        super.onReady(cb);
+        super.onReady();
     }
 
 }
@@ -534,10 +534,10 @@ export default class AppComponet extends Componet{
 
     childName:string;
 
-    onReady(cb){
+    onReady(){
         setTimeout(()=>{
             this.childName = "小华";
-            super.onReady(cb);
+            super.onReady();
         }, 1000);
     }
 }
@@ -562,10 +562,10 @@ export default class ChildComponet extends Componet{
     //定义事件
     changeName:CmpxEvent = new CmpxEvent();
 
-    onReady(cb){
+    onReady(){
         setTimeout(()=>{
             this.changeName.trigger([this.name]);
-            super.onReady(cb);
+            super.onReady();
         }, 1000);
     }
 
@@ -634,10 +634,10 @@ export default class AppComponet extends Componet{
     @VMVar()
     child1:ChildComponet;
 
-    onReady(cb){
+    onReady(){
         //操作this.child1
         this.childName = this.child1.name;
-        super.onReady(cb);
+        super.onReady();
     }
 
 }

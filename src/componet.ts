@@ -60,6 +60,7 @@ export class Componet {
      * 组件视图已经处理完成时触发， 一次性事件
      */
     onReady(): void {
+        this.$update();
     }
 
     /**

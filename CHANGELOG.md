@@ -6,7 +6,7 @@
 
 ### 优化
 
-* **componet:** add options arg to abstract controls
+* **componet:** 生命周期事件
 
 
 ### 新增

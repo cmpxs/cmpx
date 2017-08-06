@@ -1007,6 +1007,7 @@ export class CompileRender {
             newSubject.update({
                 componet: componet
             });
+            isNewComponet && componet.onInit();
             readyFn();
         },
         readyFn = function () {
@@ -1027,12 +1028,7 @@ export class CompileRender {
             else
                 readyEnd();
         };
-        if (isNewComponet) {
-            initFn();
-            componet.onInit();
-        }
-        else
-            initFn();
+        initFn();
 
         return { newSubject: newSubject, refComponet: componet };
     }
