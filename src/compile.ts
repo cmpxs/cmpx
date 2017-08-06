@@ -1885,7 +1885,7 @@ export class Compile {
                         preComponet = refComponet;
 
                     } else
-                        preSubject.update({
+                        preSubject &&preSubject.update({
                             componet: preComponet
                         });
                 },
