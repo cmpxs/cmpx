@@ -910,7 +910,7 @@ export class CompileRender {
         if (componetDef) {
             isNewComponet = true;
             componet = componetDef instanceof Componet ? componetDef : new componetDef();
-            componet.$name = name;
+            //componet.$name = name;
             componet.$subject = newSubject;
             componet.$parentElement = parentElement;
             componet.$parent = parentComponet;
