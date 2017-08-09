@@ -1554,7 +1554,7 @@ export class Compile {
                         //如果有数据
                         if (datas) {
                             //如果不是数组，转为一个数组
-                            isArray || (datas = [datas]);
+                            isArray || (datas = datas ? [datas] : []);
 
                             let count = datas.length;
 
