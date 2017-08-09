@@ -271,7 +271,7 @@ var _newTextContent = function (tmpl: string, start: number, end: number): ITagI
         });
     },
     //查找分析tag和cmd
-    _tagInfoRegex = /\<\s*(\/*)\s*([^<>\s]+)\s*([^<>]*?)(\/*)\s*\>|\{\{\s*(\/*)\s*([^\s\{\}]+)\s*(.*?)(\/*)\}\}/gim,
+    _tagInfoRegex = /\<\s*(\/*)\s*([^<>\s/]+)\s*([^<>]*?)(\/*)\s*\>|\{\{\s*(\/*)\s*([^\s\{\}]+)\s*(.*?)(\/*)\}\}/gim,
     _makeTagInfos = function (tmpl: string): Array<ITagInfo> {
         var lastIndex = 0, list: Array<ITagInfo> = [];
 
