@@ -1993,7 +1993,7 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
             '$index = ', itemName, '_index = index, $count = ', itemName, '_count = count;\n',
             '$last = ', itemName, '_last = (count - index == 1), $first = ', itemName, '_first = (index == 0), $odd = ', itemName, '_odd = (index % 2 == 0), $even = ', itemName, '_even = !$odd;\n',
             '};\n',
-            'setForVar.call(componet, item, $count, $index);'
+            'setForVar.call(componet, ', itemName ,', $count, $index);'
         ].join('');
         outList.push(str);
     },
