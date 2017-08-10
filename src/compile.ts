@@ -854,7 +854,7 @@ let _tmplName = '__tmpl__',
     _setTextNode = function(textNode, content){
         if (!_textContentName)
             _textContentName = ('textContent' in textNode) ? 'textContent' : 'nodeValue';
-        textNode[_textContentName] = content;
+        textNode[_textContentName] = CmpxLib.isString(content) ? CmpxLib.decodeHtml(content) : content;
     };
 
 export class CompileRender {
