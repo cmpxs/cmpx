@@ -12,9 +12,7 @@ class TestCP1 extends Componet{
 }
 
 var tmpl = `
-{{for citem in this.list}}
-{{: citem.text}}
-{{/for}}
+{{include from="this.aaa" /}}
 `;
 
 describe('Compile', () => {

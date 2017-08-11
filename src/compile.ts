@@ -1845,8 +1845,9 @@ export class Compile {
         };
     }
 
-    public static includeRender(context: any, contextFn: Function, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function): void {
-        if (!context || subject.isRemove) return;
+    public static includeRender(context: any, contextFn: Function, componet: Componet, parentElement: HTMLElement, insertTemp: boolean, subject: CompileSubject, param: Function, contextFrom: any): void {
+        if (!(context || contextFrom) || subject.isRemove) return;
+        contextFrom && (context = contextFrom.call(componet));
 
         if (CmpxLib.isString(context)) {
             let tmpl = _getComponetTmpl(componet, context);
@@ -2110,19 +2111,21 @@ var _buildCompileFn = function (tagInfos: Array<ITagInfo>): Function {
                     case 'include':
                         let incAttr = CmpxLib.arrayToObject<IAttrInfo>(tag.attrs, 'name'),
                             incTmpl = incAttr['tmpl'],
+                            incTmplFrom = incAttr['from'],
                             incParam = incAttr['param'] ? incAttr['param'].value : 'null',
                             incRender: any = incAttr['render'],
                             hasIncChild: boolean = tag.children && tag.children.length > 0;
-                        incParam = incParam == 'null' ? incParam : ('function(){ return ' + incParam + ';}');
-                        incRender && (incRender = 'function(){ return ' + incRender.value + '}');
+                        incParam = incParam == 'null' ? incParam : ('function(){ return ' + incParam + '; }');
+                        incRender && (incRender = 'function(){ return ' + incRender.value + '; }');
                         let context = incRender ? incRender : ('"' + (incTmpl ? _escapeBuildString(incTmpl.value) : '') + '"');
+                        let contextForm = incTmplFrom ? 'function(){ return '+incTmplFrom.value+'; }' : 'null';
 
                         if (hasIncChild) {
                             outList.push('__includeRender(' + context + ', function (componet, element, subject) {');
                             _buildCompileFnContent(tag.children, outList, varNameList, preInsert);
-                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject,  ' + incParam + ');');
+                            outList.push('}, componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + incParam + ', ' + contextForm + ');');
                         } else
-                            outList.push('__includeRender(' + context + ', null, componet, element, ' + _getInsertTemp(preInsert) + ', subject,  ' + incParam + ');');
+                            outList.push('__includeRender(' + context + ', null, componet, element, ' + _getInsertTemp(preInsert) + ', subject, ' + incParam + ', ' + contextForm + ');');
                         preInsert = true;
 
                         break;
